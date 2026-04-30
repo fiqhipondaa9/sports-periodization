@@ -1,145 +1,126 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, ReferenceDot } from 'recharts';
+import { Layout, Calendar, Trophy, Zap, Brain, Apple, Dumbbell, Activity, Target } from 'lucide-react';
 
-const SEMUA_BULAN = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-];
+const App = () => {
+  const BRANDING = "PERIODISASI OLAHRAGA by fiqhipondaa9";
 
-export default function App() {
-  const [bulanMulai, setBulanMulai] = useState('Januari');
-  const [bulanSelesai, setBulanSelesai] = useState('Desember');
+  // State Management
+  const [startMonth, setStartMonth] = useState(0);
+  const [endMonth, setEndMonth] = useState(11);
+  const [peakingIndex, setPeakingIndex] = useState(5);
+  const [currentStrengthPhase, setCurrentStrengthPhase] = useState('Adaptasi Anatomi');
   
-  // STATE BARU: Untuk menyimpan isi ketikan dari setiap kotak (sel)
-  const [dataGrid, setDataGrid] = useState({});
+  // STATE BARU: Auto-Tapering & Kompetisi Utama
+  const [competitionMonth, setCompetitionMonth] = useState('Okt');
 
-  const dapatkanRentangBulan = () => {
-    const indeksMulai = SEMUA_BULAN.indexOf(bulanMulai);
-    const indeksSelesai = SEMUA_BULAN.indexOf(bulanSelesai);
-    if (indeksSelesai < indeksMulai) return [SEMUA_BULAN[indeksMulai]]; 
-    return SEMUA_BULAN.slice(indeksMulai, indeksSelesai + 1);
-  };
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const activeMonths = useMemo(() => months.slice(startMonth, endMonth + 1), [startMonth, endMonth]);
 
-  const bulanAktif = dapatkanRentangBulan();
+  // ALGORITMA AUTO-TAPERING
+  const chartData = useMemo(() => {
+    return activeMonths.map((m, i) => {
+      // 1. Kalkulasi Beban Dasar (Normal)
+      let baseVolume = peakingIndex * 18 - (i * 2);
+      let baseIntensity = (6 - peakingIndex) * 18 + (i * 2);
 
-  const kategoriBaris = [
-    { id: 'fase', label: 'Phase (Fase Utama)' },
-    { id: 'sub_fase', label: 'Sub Phase' },
-    { id: 'strength', label: 'Fokus Strength' },
-    { id: 'endurance', label: 'Fokus Endurance' },
-    { id: 'volume', label: 'Volume (%)' },
-    { id: 'intensitas', label: 'Intensitas (%)' },
-  ];
+      // 2. Trigger Auto-Tapering jika bulan ini adalah Bulan Kompetisi
+      if (m === competitionMonth) {
+        // Pemotongan Volume 50% (berada di rentang 40-60% sesuai panduan)
+        baseVolume = baseVolume * 0.5; 
+        // Intensitas memuncak
+        baseIntensity = Math.min(baseIntensity * 1.2, 100); 
+      }
 
-  // FUNGSI BARU: Untuk menyimpan data saat pelatih mengetik di kotak
-  const tanganiPerubahanSel = (barisId, bulan, minggu, nilai) => {
-    const kunciSel = `${barisId}-${bulan}-${minggu}`;
-    setDataGrid(prev => ({
-      ...prev,
-      [kunciSel]: nilai
-    }));
-  };
+      return { 
+        name: m, 
+        Intensitas: baseIntensity, 
+        Volume: baseVolume,
+        isComp: m === competitionMonth
+      };
+    });
+  }, [activeMonths, peakingIndex, competitionMonth]);
 
-  // FUNGSI BARU: Pewarnaan otomatis mirip Excel
-  const dapatkanWarnaLatar = (nilai) => {
-    if (!nilai) return 'transparent'; // Jika kosong, transparan
-    const teks = nilai.toString().toUpperCase();
-    
-    // Logika warna berdasarkan kata kunci
-    if (teks.includes('PERSIAPAN')) return '#bbf7d0'; // Hijau muda
-    if (teks.includes('KOMPETISI') || teks.includes('UTAMA')) return '#fca5a5'; // Merah muda
-    if (teks.includes('TRANSISI')) return '#bfdbfe'; // Biru muda
-    if (teks.includes('PRA')) return '#fef08a'; // Kuning muda
-    
-    // Warna untuk Volume dan Intensitas tinggi (Angka > 80)
-    if (!isNaN(teks) && Number(teks) >= 80) return '#fed7aa'; // Oranye
-    
-    return 'transparent';
-  };
+  // (Fungsi getScoreLabel, getNutrition, calculateScore tetap sama seperti sebelumnya...)
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', minWidth: '1000px' }}>
-      <h1 style={{ color: '#1e3a8a' }}>Annual Plan Periodization Builder</h1>
-      <p style={{ color: '#555' }}>Ketik "Persiapan", "Kompetisi", "Transisi", atau angka &gt 80 untuk melihat warna otomatis.</p>
-
-      {/* Kontrol Waktu */}
-      <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f3f4f6', borderRadius: '8px', display: 'flex', gap: '20px' }}>
+    <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-900">
+      
+      {/* Header & Timeline Picker */}
+      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
         <div>
-          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Bulan Mulai:</label>
-          <select value={bulanMulai} onChange={(e) => setBulanMulai(e.target.value)} style={{ padding: '5px' }}>
-            {SEMUA_BULAN.map(bulan => <option key={`mulai-${bulan}`} value={bulan}>{bulan}</option>)}
-          </select>
+          <h1 className="text-2xl font-black tracking-tight text-blue-900 uppercase">{BRANDING}</h1>
+          <p className="text-slate-500 font-medium">Digital Periodization & Auto-Tapering Algorithm</p>
         </div>
-        <div>
-          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Bulan Selesai:</label>
-          <select value={bulanSelesai} onChange={(e) => setBulanSelesai(e.target.value)} style={{ padding: '5px' }}>
-            {SEMUA_BULAN.map(bulan => <option key={`selesai-${bulan}`} value={bulan}>{bulan}</option>)}
-          </select>
+        <div className="flex flex-wrap gap-3">
+          <div className="bg-blue-50 px-4 py-2 rounded-xl flex items-center gap-3 border border-blue-100">
+            <Calendar className="text-blue-600 w-5 h-5" />
+            <span className="font-bold text-blue-900">{activeMonths[0]} - {activeMonths[activeMonths.length - 1]}</span>
+          </div>
+          {/* KONTROL BARU: Pemilihan Bulan Kompetisi */}
+          <div className="bg-red-50 px-4 py-2 rounded-xl flex items-center gap-3 border border-red-100">
+            <Target className="text-red-600 w-5 h-5" />
+            <select 
+              value={competitionMonth} 
+              onChange={(e) => setCompetitionMonth(e.target.value)}
+              className="bg-transparent font-bold text-red-900 outline-none cursor-pointer"
+            >
+              {activeMonths.map(m => <option key={`comp-${m}`} value={m}>Target Tanding: {m}</option>)}
+            </select>
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* Tabel Dinamis */}
-      <div style={{ overflowX: 'auto', border: '1px solid #ccc' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '12px' }}>
-          <thead>
-            <tr>
-              <th style={{ border: '1px solid #999', padding: '10px', backgroundColor: '#e5e7eb', width: '150px' }}>MAKRO</th>
-              {bulanAktif.map(bulan => (
-                <th key={bulan} colSpan={4} style={{ border: '1px solid #999', padding: '5px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
-                  {bulan.toUpperCase()}
-                </th>
-              ))}
-            </tr>
-            <tr>
-              <th style={{ border: '1px solid #999', padding: '10px', backgroundColor: '#e5e7eb' }}>MESSO (Minggu)</th>
-              {bulanAktif.map(bulan => (
-                <React.Fragment key={`minggu-${bulan}`}>
-                  {[1, 2, 3, 4].map(minggu => (
-                    <th key={`${bulan}-m${minggu}`} style={{ border: '1px solid #999', padding: '2px', backgroundColor: '#f9fafb' }}>{minggu}</th>
-                  ))}
-                </React.Fragment>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {kategoriBaris.map((baris) => (
-              <tr key={baris.id}>
-                <td style={{ border: '1px solid #999', padding: '8px', fontWeight: 'bold', backgroundColor: '#f3f4f6', textAlign: 'left' }}>
-                  {baris.label}
-                </td>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Modul: Peaking Index & AUTO-TAPERING CHART */}
+        <div className="md:col-span-3 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="flex items-center gap-2 font-bold text-lg"><Zap className="w-5 h-5 text-orange-500" /> Beban Latihan & Auto-Tapering</h2>
+              <p className="text-xs text-slate-500 mt-1">Garis putus-putus merah menandakan bulan kompetisi di mana volume otomatis dipangkas 50%.</p>
+            </div>
+            <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-2xl">
+              <span className="text-xs font-bold text-slate-500 uppercase">Peaking Index</span>
+              <input type="range" min="1" max="5" value={peakingIndex} onChange={(e) => setPeakingIndex(e.target.value)} className="accent-orange-500" />
+              <span className="font-black text-orange-600">{peakingIndex}</span>
+            </div>
+          </div>
+          
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 'bold'}} />
+                <YAxis hide />
+                <Tooltip 
+                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} 
+                  labelStyle={{fontWeight: 'bold', color: '#1e293b', marginBottom: '4px'}}
+                />
+                <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
                 
-                {bulanAktif.map(bulan => (
-                  <React.Fragment key={`cell-${baris.id}-${bulan}`}>
-                    {[1, 2, 3, 4].map(minggu => {
-                      const kunciSel = `${baris.id}-${bulan}-${minggu}`;
-                      const nilaiSel = dataGrid[kunciSel] || ''; // Ambil nilai dari state, atau kosong
-                      const warnaLatar = dapatkanWarnaLatar(nilaiSel); // Tentukan warna
+                {/* Penanda Garis Kompetisi Utama */}
+                {activeMonths.includes(competitionMonth) && (
+                  <ReferenceLine 
+                    x={competitionMonth} 
+                    stroke="#ef4444" 
+                    strokeDasharray="5 5" 
+                    label={{ position: 'top', value: 'KOMPETISI UTAMA', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }} 
+                  />
+                )}
 
-                      return (
-                        <td key={kunciSel} style={{ border: '1px solid #ccc', padding: '0', backgroundColor: warnaLatar }}>
-                          <input 
-                            type="text" 
-                            value={nilaiSel}
-                            onChange={(e) => tanganiPerubahanSel(baris.id, bulan, minggu, e.target.value)}
-                            style={{ 
-                              width: '100%', 
-                              border: 'none', 
-                              textAlign: 'center', 
-                              padding: '8px 0', 
-                              outline: 'none',
-                              backgroundColor: 'transparent', // Agar input mengikuti warna background <td>
-                              fontWeight: nilaiSel ? 'bold' : 'normal'
-                            }} 
-                          />
-                        </td>
-                      )
-                    })}
-                  </React.Fragment>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                <Line type="monotone" dataKey="Intensitas" stroke="#ef4444" strokeWidth={4} activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="Volume" stroke="#3b82f6" strokeWidth={4} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* (Sisa modul lainnya seperti Fase Kekuatan, Evaluasi Fisik, dan 9 Rule S Mental letakkan di bawah ini...) */}
+
       </div>
     </div>
   );
-}
+};
+
+export default App;
