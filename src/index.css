@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Tambahan agar tampilan formulir tetap rapi */
+body {
+  margin: 0;
+  font-family: sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f3f4f6;
+}
+
+#report-container {
+  min-height: 100vh;
+}
+
+/* Sembunyikan panah naik-turun di kotak angka */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
