@@ -59,7 +59,7 @@ export default function App() {
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', minWidth: '1000px' }}>
       <h1 style={{ color: '#1e3a8a' }}>Annual Plan Periodization Builder</h1>
-      <p style={{ color: '#555' }}>Ketik "Persiapan", "Kompetisi", "Transisi", atau angka > 80 untuk melihat warna otomatis.</p>
+      <p style={{ color: '#555' }}>Ketik "Persiapan", "Kompetisi", "Transisi", atau angka &gt 80 untuk melihat warna otomatis.</p>
 
       {/* Kontrol Waktu */}
       <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f3f4f6', borderRadius: '8px', display: 'flex', gap: '20px' }}>
