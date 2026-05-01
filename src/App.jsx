@@ -224,33 +224,55 @@ const App = () => {
   };
 
   const handleExportPNG = async () => {
-    window.scrollTo(0, 0);
-    const el = reportRef.current;
-    const originalWidth = el.style.width;
-    const originalMaxWidth = el.style.maxWidth;
-    
-    const scrollContainers = el.querySelectorAll('.overflow-x-auto');
-    const originalStyles = [];
-    scrollContainers.forEach((container) => {
-      originalStyles.push({ overflowX: container.style.overflowX, overflow: container.style.overflow });
-      container.style.overflowX = 'visible';
-      container.style.overflow = 'visible';
-    });
+    try {
+      window.scrollTo(0, 0);
+      const el = reportRef.current;
+      
+      // 1. Simpan gaya asli elemen dan kotak induknya
+      const originalWidth = el.style.width;
+      const originalMaxWidth = el.style.maxWidth;
+      const parentOverflow = el.parentElement.style.overflow;
+      
+      // 2. Lepaskan kuncian (overflow) induk agar tidak memotong kanvas!
+      el.parentElement.style.overflow = 'visible';
 
-    el.style.width = '1300px'; 
-    el.style.maxWidth = 'none';
+      const scrollContainers = el.querySelectorAll('.overflow-x-auto');
+      const originalStyles = [];
+      scrollContainers.forEach((container) => {
+        originalStyles.push({ overflowX: container.style.overflowX, overflow: container.style.overflow });
+        container.style.overflowX = 'visible';
+        container.style.overflow = 'visible';
+      });
 
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true, windowWidth: 1300 });
+      // 3. Paksa lebar jadi 1300px untuk layar kecil
+      el.style.width = '1300px'; 
+      el.style.maxWidth = 'none';
 
-    el.style.width = originalWidth;
-    el.style.maxWidth = originalMaxWidth;
-    scrollContainers.forEach((container, i) => {
-      container.style.overflowX = originalStyles[i].overflowX;
-      container.style.overflow = originalStyles[i].overflow;
-    });
+      // 4. SANGAT KRUSIAL: Jeda 0.5 detik agar Grafik Recharts selesai bernapas/merentang
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    const link = document.createElement('a'); link.href = canvas.toDataURL('image/png');
-    link.download = `Plan_${athleteInfo.name}.png`; link.click();
+      // 5. Jepret Gambar
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, windowWidth: 1300 });
+
+      // 6. Kembalikan semua ke wujud semula dalam sekejap mata
+      el.style.width = originalWidth;
+      el.style.maxWidth = originalMaxWidth;
+      el.parentElement.style.overflow = parentOverflow;
+      
+      scrollContainers.forEach((container, i) => {
+        container.style.overflowX = originalStyles[i].overflowX;
+        container.style.overflow = originalStyles[i].overflow;
+      });
+
+      // 7. Unduh
+      const link = document.createElement('a'); 
+      link.href = canvas.toDataURL('image/png');
+      link.download = `Periodisasi_${athleteInfo.name}.png`; 
+      link.click();
+    } catch (error) {
+      console.error("Error Cetak PNG:", error);
+      alert("Proses PNG gagal! Memori mesin mungkin penuh. Coba muat ulang (Refresh) halaman atau gunakan PDF.");
+    }
   };
 
   const handleExportExcel = () => {
@@ -421,7 +443,7 @@ const App = () => {
         </div>
       </div>
 
-      <div ref={reportRef} className="max-w-[1300px] mx-auto bg-white rounded-3xl border shadow-lg relative overflow-hidden print:max-w-none print:border-none print:shadow-none print:rounded-none">
+      <div className="max-w-[1300px] mx-auto bg-white rounded-3xl border shadow-lg relative overflow-hidden print:max-w-none print:border-none print:shadow-none print:rounded-none">
         
         {/* ==========================================
             PANEL KENDALI: 8 LANGKAH WIZARD
@@ -559,6 +581,11 @@ const App = () => {
              )}
            </div>
         </div>
+
+{/* =========================================
+            AREA KHUSUS CETAK (PNG & PDF)
+            ========================================= */}
+        <div ref={reportRef} className="bg-white pb-4 print:pb-0"></div>
 
         {/* HEADER IDENTITAS PRINT */}
         <div className="p-8 pb-4 print:pt-4">
@@ -794,6 +821,7 @@ const App = () => {
             </table>
           </div>
         </div>
+        </div> {/* <-- PENUTUP AREA KHUSUS CETAK --> */}
 
         {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
         <div className="grid grid-cols-2 gap-8 mb-8 no-print px-6 mt-8">
@@ -859,7 +887,7 @@ const App = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 px-6 no-print">
+        <div className="grid grid-cols-2 gap-8 px-6 print:hidden">
            {/* MODUL BIOMOTORIK BOMPA */}
            <div className="border p-6 rounded-3xl bg-slate-50/50 flex flex-col shadow-sm border-slate-200 h-80">
              <div className="flex justify-between items-center mb-4">
@@ -914,7 +942,7 @@ const App = () => {
         </div>
 
         {/* FOOTER HAK CIPTA */}
-        <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center opacity-50 px-8 pb-4 print:mt-4 print:border-t-2 print:border-black">
+        <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center opacity-50 px-8 pb-4 print:hidden">
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic print:text-black">ANNUAL TRAINING PLAN SYSTEM | Designed by fiqhipondaa9</p>
            <div className="flex gap-4 items-center no-print">
               <Globe className="w-3 h-3 text-slate-400"/><select value={terminology} onChange={e => setTerminology(e.target.value)} className="bg-transparent font-black outline-none uppercase text-[9px] cursor-pointer text-slate-400"><option value="Eropa">Mazhab Eropa</option><option value="Amerika">Mazhab Amerika</option></select>
