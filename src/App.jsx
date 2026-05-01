@@ -58,7 +58,7 @@ const App = () => {
   const t = THEMES[activeTheme];
 
   // STATE IDENTITAS
-  const [athleteInfo, setAthleteInfo] = useState({ name: 'KOTA PALU', target: 'JUARA UMUM', class: 'SEMUA CABOR', age: 'Senior (>18 Tahun)', coach: 'fiqhipondaa9' });
+  const [athleteInfo, setAthleteInfo] = useState({ name: 'EDIT NAMA TIM/ATLET', target: 'EDIT TARGET', class: 'EDIT CABOR', age: 'Senior (>18 Tahun)', coach: 'Edit Coach' });
   const [startMonth, setStartMonth] = useState(0); 
   const [endMonth, setEndMonth] = useState(11); 
   const [terminology, setTerminology] = useState('Eropa');
@@ -328,7 +328,7 @@ const App = () => {
           <div className="col-span-3 space-y-8">
             <div className="border p-8 rounded-3xl bg-white shadow-sm relative border-slate-100">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Zap className="text-orange-500 w-5 h-5"/> Grafik Beban Makrosiklus</h2>
+                <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Zap className="text-orange-500 w-5 h-5"/> Grafik Beban Makro siklus</h2>
                 <div className="flex gap-4">
                   <div className="flex items-center gap-1"><div className="w-3 h-1 bg-red-500 rounded-full"/><span className="text-[8px] font-black text-slate-400 uppercase">Intensitas</span></div>
                   <div className="flex items-center gap-1"><div className="w-3 h-1 rounded-full" style={{backgroundColor: t.hex}}/><span className="text-[8px] font-black text-slate-400 uppercase">Volume</span></div>
