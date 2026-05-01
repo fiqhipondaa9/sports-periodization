@@ -64,7 +64,7 @@ const App = () => {
   const [activeStep, setActiveStep] = useState(1);
 
   const [startYear, setStartYear] = useState(new Date().getFullYear());
-  const [athleteInfo, setAthleteInfo] = useState({ cabor: 'EDIT CABOR', age: '23 TAHUN', prov: 'EDIT', name: 'EDIT', coach: 'EDIT' });
+  const [athleteInfo, setAthleteInfo] = useState({ cabor: 'EDIT', age: '23 TAHUN', prov: 'EDIT', name: 'EDIT', coach: 'EDIT' });
   const [startMonth, setStartMonth] = useState(0); 
   const [endMonth, setEndMonth] = useState(11); 
   const [phaseProps, setPhaseProps] = useState({ prep: 50, comp: 50, transWeeks: 4 });
