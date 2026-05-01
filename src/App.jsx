@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
+import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 
@@ -54,7 +54,7 @@ const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
 
 const App = () => {
   const WA_NUMBER = "6285340804702";
-  const QRIS_LINK = "/shareqrdana.png";
+  const QRIS_LINK = "/qris-dana.png"; // Link File Lokal
   
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -64,7 +64,17 @@ const App = () => {
   const [activeStep, setActiveStep] = useState(1);
 
   const [startYear, setStartYear] = useState(new Date().getFullYear());
-  const [athleteInfo, setAthleteInfo] = useState({ cabor: 'EDIT', age: '23 TAHUN', prov: 'EDIT', name: 'EDIT', coach: 'EDIT' });
+  
+  // FIX: Semua Identitas dikumpulkan di sini
+  const [athleteInfo, setAthleteInfo] = useState({ 
+    cabor: 'SOFTBALL', 
+    name: 'TIM PUTRI DKI JAKARTA', 
+    age: 'SENIOR', 
+    prov: 'DKI JAKARTA', 
+    coach: 'FIQHIPONDAA9',
+    target: 'JUARA UMUM PON'
+  });
+  
   const [startMonth, setStartMonth] = useState(0); 
   const [endMonth, setEndMonth] = useState(11); 
   const [phaseProps, setPhaseProps] = useState({ prep: 50, comp: 50, transWeeks: 4 });
@@ -92,6 +102,7 @@ const App = () => {
     { id: 'm1', label: 'Keberanian', score: 8 }, { id: 'm2', label: 'Fokus', score: 8 }, { id: 'm3', label: 'Motivasi', score: 8 },
     { id: 'm4', label: 'Emosi', score: 8 }, { id: 'm5', label: 'Resiliensi', score: 8 }, { id: 'm6', label: 'Disiplin', score: 8 }
   ]);
+  
   const [evaluation, setEvaluation] = useState({ name: 'Tes Fisik Bleep', score: 50, target: 100, isTime: false });
   const [activeBiomotor, setActiveBiomotor] = useState('Strength');
   const [terminology, setTerminology] = useState('Eropa');
@@ -182,7 +193,7 @@ const App = () => {
         const d = JSON.parse(ev.target.result);
         if(d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
         if(d.startYear) setStartYear(d.startYear);
-        if(d.athleteInfo) setAthleteInfo(d.athleteInfo);
+        if(d.athleteInfo) setAthleteInfo({...athleteInfo, ...d.athleteInfo}); // Merge identity
         if(d.startMonth !== undefined) setStartMonth(d.startMonth);
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
         if(d.phaseProps) setPhaseProps(d.phaseProps);
@@ -213,7 +224,6 @@ const App = () => {
   };
 
   const handleExportPNG = async () => {
-    // Reset scroll & Fix cropping issue by forcing width temporarily
     window.scrollTo(0, 0);
     const el = reportRef.current;
     const originalWidth = el.style.width;
@@ -363,7 +373,7 @@ const App = () => {
             <div className="bg-blue-600 p-6 text-white">
                <Coffee className="w-10 h-10 mx-auto mb-2 opacity-80" />
                <h2 className="font-black text-lg">Dukung Pengembangan!</h2>
-               <p className="text-[10px] opacity-80">Traktir kopi jika anda terbantu oleh aplikasi ini.</p>
+               <p className="text-[10px] opacity-80">Traktir kopi untuk update fitur selanjutnya.</p>
             </div>
             <div className="p-6 flex flex-col items-center">
                <img src={QRIS_LINK} alt="QRIS DANA" className="w-48 h-48 object-cover rounded-2xl shadow-md border mb-4" onError={(e) => e.target.src = "https://via.placeholder.com/200?text=QRIS+Image+Error"}/>
@@ -428,16 +438,26 @@ const App = () => {
            </div>
 
            <div className="bg-white p-5 rounded-2xl border shadow-sm min-h-[160px] flex flex-col justify-between">
+             {/* FIX: Form Identitas yang Lengkap di Langkah 1 */}
              {activeStep === 1 && (
                <div className="animate-in fade-in slide-in-from-bottom-2">
                  <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">1. Pengaturan Identitas & Total Waktu</h3>
-                 <div className="grid grid-cols-5 gap-4">
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">CABANG OLAHRAGA</label><input value={athleteInfo.cabor} onChange={e => setAthleteInfo({...athleteInfo, cabor: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA ATLET / TIM</label><input value={athleteInfo.name} onChange={e => setAthleteInfo({...athleteInfo, name: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase"/></div>
+                 
+                 <div className="grid grid-cols-3 gap-4 mb-4">
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">CABANG OLAHRAGA</label><input value={athleteInfo.cabor} onChange={e => setAthleteInfo({...athleteInfo, cabor: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: ATLETIK"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA ATLET / TIM</label><input value={athleteInfo.name} onChange={e => setAthleteInfo({...athleteInfo, name: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Nama Atlet/Tim"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">USIA / KATEGORI</label><input value={athleteInfo.age} onChange={e => setAthleteInfo({...athleteInfo, age: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: U-19 / Senior"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">PROVINSI / DAERAH</label><input value={athleteInfo.prov} onChange={e => setAthleteInfo({...athleteInfo, prov: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: DKI JAKARTA"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA PELATIH</label><input value={athleteInfo.coach} onChange={e => setAthleteInfo({...athleteInfo, coach: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Nama Pelatih Utama"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET TAHUNAN</label><input value={athleteInfo.target} onChange={e => setAthleteInfo({...athleteInfo, target: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: JUARA PON"/></div>
+                 </div>
+
+                 <div className="grid grid-cols-3 gap-4 border-t pt-4">
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TAHUN MULAI</label><input type="number" value={startYear} onChange={e => setStartYear(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" title="Tahun Mulai"/></div>
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN MULAI</label><select value={startMonth} onChange={e => setStartMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m}</option>)}</select></div>
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN SELESAI</label><select value={endMonth} onChange={e => setEndMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m} {startMonth > i ? '(Tahun Depan)' : ''}</option>)}</select></div>
                  </div>
+
                  <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(2)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
                </div>
              )}
@@ -545,8 +565,8 @@ const App = () => {
            <table className="text-[10px] font-black text-slate-700 uppercase print:text-[12px]">
              <tbody>
                <tr><td className="w-32 pb-1">Cabang Olahraga</td><td className="w-4 pb-1">:</td><td className="pb-1">{athleteInfo.cabor}</td></tr>
-               <tr><td className="pb-1">Usia</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.age}</td></tr>
-               <tr><td className="pb-1">Provinsi / Daerah</td><td className="pb-1">:</td><td className="pb-1"><input value={athleteInfo.prov} onChange={e=>setAthleteInfo({...athleteInfo, prov:e.target.value})} className="border-b border-slate-300 outline-none bg-transparent w-48 print:border-none print:w-auto"/></td></tr>
+               <tr><td className="pb-1">Usia / Kategori</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.age}</td></tr>
+               <tr><td className="pb-1">Provinsi / Daerah</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.prov}</td></tr>
                <tr><td className="pb-1">Pelatih</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.coach}</td></tr>
                <tr><td className="pb-1 pt-2">Nama Atlet / Tim</td><td className="pb-1 pt-2">:</td><td className="pb-1 pt-2 text-sm text-blue-900 print:text-black">{athleteInfo.name}</td></tr>
              </tbody>
