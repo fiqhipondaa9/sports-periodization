@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 
