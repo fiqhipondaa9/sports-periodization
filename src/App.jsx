@@ -228,12 +228,10 @@ const App = () => {
       window.scrollTo(0, 0);
       const el = reportRef.current;
       
-      // 1. Simpan gaya asli elemen dan kotak induknya
       const originalWidth = el.style.width;
       const originalMaxWidth = el.style.maxWidth;
       const parentOverflow = el.parentElement.style.overflow;
       
-      // 2. Lepaskan kuncian (overflow) induk agar tidak memotong kanvas!
       el.parentElement.style.overflow = 'visible';
 
       const scrollContainers = el.querySelectorAll('.overflow-x-auto');
@@ -244,17 +242,13 @@ const App = () => {
         container.style.overflow = 'visible';
       });
 
-      // 3. Paksa lebar jadi 1300px untuk layar kecil
       el.style.width = '1300px'; 
       el.style.maxWidth = 'none';
 
-      // 4. SANGAT KRUSIAL: Jeda 0.5 detik agar Grafik Recharts selesai bernapas/merentang
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 5. Jepret Gambar
       const canvas = await html2canvas(el, { scale: 2, useCORS: true, windowWidth: 1300 });
 
-      // 6. Kembalikan semua ke wujud semula dalam sekejap mata
       el.style.width = originalWidth;
       el.style.maxWidth = originalMaxWidth;
       el.parentElement.style.overflow = parentOverflow;
@@ -264,7 +258,6 @@ const App = () => {
         container.style.overflow = originalStyles[i].overflow;
       });
 
-      // 7. Unduh
       const link = document.createElement('a'); 
       link.href = canvas.toDataURL('image/png');
       link.download = `Periodisasi_${athleteInfo.name}.png`; 
