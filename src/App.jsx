@@ -1,13 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, Zap, Brain, Apple, Dumbbell, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, PieChart as PieChartIcon, Table, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar } from 'lucide-react';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
+import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const LOCKED_COMPONENTS = ['Endurance', 'Strength', 'Speed', 'Fleksibilitas', 'Teknik Dasar', 'Teknik Lanjutan', 'Mental / Psikologis'];
 
-// 9 COLOR MODES (THEMES)
 const THEMES = {
   blue: { id: 'blue', name: 'Blue', hex: '#3b82f6', bg: 'bg-blue-600', text: 'text-blue-600', textDark: 'text-blue-900', bgLight: 'bg-blue-50', borderLight: 'border-blue-100', hoverBg: 'hover:bg-blue-700', hoverLight: 'hover:bg-blue-50' },
   emerald: { id: 'emerald', name: 'Emerald', hex: '#10b981', bg: 'bg-emerald-600', text: 'text-emerald-600', textDark: 'text-emerald-900', bgLight: 'bg-emerald-50', borderLight: 'border-emerald-100', hoverBg: 'hover:bg-emerald-700', hoverLight: 'hover:bg-emerald-50' },
@@ -22,13 +21,13 @@ const THEMES = {
 
 const biomotorData = {
   Strength: [
-    { id: 'Adaptasi Anatomi', param: '40-60% 1RM | 12-20 Reps | 2-4 Set', rest: 'Rest: 30-120 Detik', desc: 'Modifikasi ketebalan jaringan ikat & fungsi ligamen.' },
-    { id: 'Hipertrofi', param: '60-80% 1RM | 6-12 Reps | 3-6 Set', rest: 'Rest: 1-2 Menit', desc: 'Pembesaran diameter otot kontraktil (sarkoplasma).' },
-    { id: 'Kekuatan Maksimum (MxS)', param: '70-100% 1RM | 1-6 Reps | 2-8 Set', rest: 'Rest: 3-5+ Menit', desc: 'Eksitasi impuls neuromuskuler & firing rate neuron.' },
-    { id: 'Konversi (Power)', param: '30-80% 1RM | 8-15 Reps Balistik | 2-5 Set', rest: 'Rest: 3-4 Menit', desc: 'Optimalisasi laju percepatan gaya (RFD).' },
-    { id: 'Konversi (Endurance)', param: '30-60% 1RM | 15-30+ Reps | 2-5 Set', rest: 'Rest: 0.5-2 Menit', desc: 'Ketahanan toleransi cairan asam laktat darah.' },
-    { id: 'Pemeliharaan', param: '1-4x Sesi/Minggu | Beban Spesifik', rest: 'Rest: Relatif', desc: 'Mencegah detraining selama musim kompetisi.' },
-    { id: 'Cessation', param: 'Hentikan Beban 5-7 Hari', rest: 'Rest: Total', desc: 'Fasilitasi superkompensasi puncak sebelum perlombaan.' }
+    { id: 'Adaptasi Anatomi', param: '40-60% 1RM | 12-20 Reps', rest: 'Rest: 30-120 Detik', desc: 'Modifikasi ketebalan jaringan ikat & fungsi ligamen.' },
+    { id: 'Hipertrofi', param: '60-80% 1RM | 6-12 Reps', rest: 'Rest: 1-2 Menit', desc: 'Pembesaran diameter otot kontraktil (sarkoplasma).' },
+    { id: 'Kekuatan Maksimum', param: '70-100% 1RM | 1-6 Reps', rest: 'Rest: 3-5+ Menit', desc: 'Eksitasi impuls neuromuskuler & firing rate neuron.' },
+    { id: 'Konversi (Power)', param: '30-80% 1RM | 8-15 Reps Balistik', rest: 'Rest: 3-4 Menit', desc: 'Optimalisasi laju percepatan gaya (RFD).' },
+    { id: 'Konversi (Endurance)', param: '30-60% 1RM | 15-30+ Reps', rest: 'Rest: 0.5-2 Menit', desc: 'Ketahanan toleransi cairan asam laktat darah.' },
+    { id: 'Pemeliharaan', param: '1-4x Sesi/Minggu', rest: 'Rest: Relatif', desc: 'Mencegah detraining selama musim kompetisi.' },
+    { id: 'Cessation', param: 'Hentikan Beban 5-7 Hari', rest: 'Rest: Total', desc: 'Fasilitasi superkompensasi puncak.' }
   ],
   Endurance: [
     { id: 'Aerobic Endurance', param: '120-150 bpm', rest: 'Volume Tinggi', desc: 'Meningkatkan VO2Max & kapilarisasi.' },
@@ -41,95 +40,117 @@ const biomotorData = {
 };
 
 const microTypesDesc = {
-  'Developmental': 'Fokus: Peningkatan adaptasi fungsional, keterampilan, & kualitas biomotor.',
-  'Shock': 'Fokus: Kelebihan beban terencana (planned overreaching) untuk efek tertunda.',
-  'Regeneration': 'Fokus: Pemulihan aktif, meredakan ketegangan saraf & membuang laktat.',
-  'Peaking / Unloading': 'Fokus: Pembongkaran beban (Tapering) menuju superkompensasi puncak.'
+  'Developmental': 'Peningkatan adaptasi fungsional, keterampilan, & kualitas biomotor.',
+  'Shock': 'Kelebihan beban terencana (planned overreaching) untuk efek tertunda.',
+  'Regeneration': 'Pemulihan aktif, meredakan ketegangan saraf & membuang laktat.',
+  'Peaking / Unloading': 'Pembongkaran beban (Tapering) menuju superkompensasi puncak.'
 };
 
+const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
+  <div onClick={onChange} className="cursor-pointer flex items-center justify-center w-3 h-3 mx-auto rounded-[2px] border transition-colors shadow-sm" style={{ backgroundColor: checked ? colorHex : '#ffffff', borderColor: checked ? colorHex : '#cbd5e1', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+    {checked && <svg viewBox="0 0 14 14" fill="none" className="w-2.5 h-2.5 text-white stroke-current stroke-[3] stroke-linecap-round stroke-linejoin-round"><polyline points="2.5 7 5.5 10 11.5 3"/></svg>}
+  </div>
+);
+
 const App = () => {
-  const BRANDING = "ANNUAL TRAINING PLAN SYSTEM by fiqhipondaa9";
+  const WA_NUMBER = "6285340804702";
+  const QRIS_LINK = "https://drive.google.com/uc?export=view&id=19rNaq96lXmgMBTkCZyyuHqP7HYhoW4MN";
+  
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const [activeTheme, setActiveTheme] = useState('blue');
   const t = THEMES[activeTheme];
+  const [activeStep, setActiveStep] = useState(1);
 
-  const [athleteInfo, setAthleteInfo] = useState({ name: 'KOTA PALU', target: 'JUARA UMUM', class: 'SEMUA CABOR', age: 'Senior (>18 Tahun)', coach: 'fiqhipondaa9' });
+  const [startYear, setStartYear] = useState(new Date().getFullYear());
+  const [athleteInfo, setAthleteInfo] = useState({ cabor: 'SOFTBALL', age: '23 TAHUN', prov: 'DKI JAKARTA', name: 'TIM PUTRI DKI JAKARTA', coach: 'fiqhipondaa9' });
   const [startMonth, setStartMonth] = useState(0); 
   const [endMonth, setEndMonth] = useState(11); 
-  const [terminology, setTerminology] = useState('Eropa');
-  
-  const [competitionMonth, setCompetitionMonth] = useState('Nov');
-  const [secondaryPeaks, setSecondaryPeaks] = useState([]);
-  
-  const [macroValues, setMacroValues] = useState(months.reduce((acc, m) => ({ ...acc, [m]: { vol: 70, int: 30, peak: 3 } }), {}));
-  const [nutritionNote, setNutritionNote] = useState('Input catatan gizi, suplemen, atau berat badan di sini.');
+  const [phaseProps, setPhaseProps] = useState({ prep: 50, comp: 50, transWeeks: 4 });
+  const [competitionMonth, setCompetitionMonth] = useState('Okt');
   const [tryOutMonths, setTryOutMonths] = useState([]);
+  const [tryInMonths, setTryInMonths] = useState([]);
   const [locations, setLocations] = useState({});
-  const [materials, setMaterials] = useState(['Latihan Fisik Umum', 'Teknik Dasar', 'Simulasi Pertandingan']);
+  const [monthlyObjectives, setMonthlyObjectives] = useState(months.reduce((acc, m) => ({ ...acc, [m]: '' }), {}));
+
+  const [macroValues, setMacroValues] = useState(months.reduce((acc, m) => ({ ...acc, [m]: { vol: 50, int: 50, peak: 3 } }), {}));
+  const [trainingFactors, setTrainingFactors] = useState(months.reduce((acc, m) => ({ ...acc, [m]: { fisik: 40, teknik: 30, taktik: 20, psikis: 10 } }), {}));
+  
+  const [materials, setMaterials] = useState(['Simulasi Game', 'Drilling Defence']);
   const [materialInput, setMaterialInput] = useState('');
   const [matrixData, setMatrixData] = useState({});
+  const [testSchedule, setTestSchedule] = useState({});
   
   const [microType, setMicroType] = useState('Developmental');
   const [showDailyModal, setShowDailyModal] = useState(false);
+  const [showQrisModal, setShowQrisModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState('Sen');
   const [dailySessions, setDailySessions] = useState(['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].reduce((acc, d) => ({ ...acc, [d]: { morning: { menu: '', int: 5 }, afternoon: { menu: '', int: 5 } } }), {}));
   
   const [mentalData, setMentalData] = useState([
     { id: 'm1', label: 'Keberanian', score: 8 }, { id: 'm2', label: 'Fokus', score: 8 }, { id: 'm3', label: 'Motivasi', score: 8 },
-    { id: 'm4', label: 'Emosi', score: 8 }, { id: 'm5', label: 'Resiliensi', score: 8 }, { id: 'm6', label: 'Disiplin', score: 8 },
-    { id: 'm7', label: 'Self-Talk', score: 8 }, { id: 'm8', label: 'Anxiety', score: 8 }, { id: 'm9', label: 'Social', score: 8 }
+    { id: 'm4', label: 'Emosi', score: 8 }, { id: 'm5', label: 'Resiliensi', score: 8 }, { id: 'm6', label: 'Disiplin', score: 8 }
   ]);
-  const [evaluation, setEvaluation] = useState({ name: 'Uji 1RM / VO2 Max', score: 50, target: 100, isTime: false });
+  const [evaluation, setEvaluation] = useState({ name: 'Tes Fisik Bleep', score: 50, target: 100, isTime: false });
   const [activeBiomotor, setActiveBiomotor] = useState('Strength');
+  const [terminology, setTerminology] = useState('Eropa');
+  const [nutritionNote, setNutritionNote] = useState('Input catatan gizi, suplemen, atau berat badan di sini.');
 
-  const activeMonths = useMemo(() => months.slice(startMonth, endMonth + 1), [startMonth, endMonth]);
+  const calculatedEndYear = startMonth <= endMonth ? startYear : startYear + 1;
 
-  const handleCompMonthChange = (e) => {
-    const newMonth = e.target.value;
-    setCompetitionMonth(newMonth);
-    if (secondaryPeaks.includes(newMonth)) setSecondaryPeaks(prev => prev.filter(x => x !== newMonth));
-  };
+  const activeMonths = useMemo(() => {
+    if (startMonth <= endMonth) return months.slice(startMonth, endMonth + 1);
+    return [...months.slice(startMonth), ...months.slice(0, endMonth + 1)];
+  }, [startMonth, endMonth]);
+
+  const allMaterials = useMemo(() => Array.from(new Set([...LOCKED_COMPONENTS, ...materials])), [materials]);
 
   useEffect(() => {
     if (!activeMonths.includes(competitionMonth)) setCompetitionMonth(activeMonths[activeMonths.length - 1]);
   }, [activeMonths, competitionMonth]);
 
-  const getPhase = (m) => {
-    if (m === competitionMonth || secondaryPeaks.includes(m)) {
-      return { label: terminology === 'Eropa' ? 'KOMPETISI UTAMA' : 'IN-SEASON', color: 'bg-red-600 text-white' };
-    }
-    const currIdx = months.indexOf(m);
-    const compIdx1 = months.indexOf(competitionMonth);
-    const maxSec = secondaryPeaks.length > 0 ? Math.max(...secondaryPeaks.map(x => months.indexOf(x))) : -1;
-    const lastCompIdx = Math.max(compIdx1, maxSec);
+  const getPhaseData = (m) => {
+    const currIdx = activeMonths.indexOf(m);
+    const compIdx = activeMonths.indexOf(competitionMonth);
 
-    // Memisahkan Persiapan Umum & Khusus/Pra-Kompetisi secara dinamis
-    if (currIdx < lastCompIdx) {
-       const midPoint = Math.floor(lastCompIdx / 2);
-       if (currIdx < midPoint) return { label: terminology === 'Eropa' ? 'PERSIAPAN UMUM' : 'OFF-SEASON', color: `${t.bg} text-white` };
-       return { label: terminology === 'Eropa' ? 'PERSIAPAN KHUSUS' : 'PRE-SEASON', color: `${t.bgLight} ${t.textDark} border border-${t.text}` };
-    }
-    return { label: 'TRANSISI', color: 'bg-slate-400 text-white' };
+    if (m === competitionMonth) return { phase: 'KOMPETISI', subPhase: 'KOMPETISI UTAMA', color: 'bg-red-600 text-white', subColor: 'bg-pink-600 text-white' };
+    if (currIdx > compIdx) return { phase: 'TRANSISI', subPhase: 'PEMULIHAN AKTIF', color: 'bg-slate-500 text-white', subColor: 'bg-slate-400 text-white' };
+    if (currIdx === compIdx - 1) return { phase: 'KOMPETISI', subPhase: 'PRA KOMPETISI', color: 'bg-purple-600 text-white', subColor: 'bg-purple-400 text-white' };
+
+    const prepLength = (compIdx - 1); 
+    if (prepLength <= 0) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN KHUSUS', color: `${t.bg} text-white`, subColor: 'bg-yellow-500 text-yellow-900' };
+
+    const generalPrepLength = Math.ceil(prepLength * (phaseProps.prep / 100));
+
+    if (currIdx < generalPrepLength) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN UMUM', color: `${t.bg} text-white`, subColor: `${t.bgLight} ${t.textDark}` };
+    return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN KHUSUS', color: `${t.bg} text-white`, subColor: 'bg-yellow-500 text-yellow-900' };
   };
 
   const unifiedPhases = useMemo(() => {
-    const phases = [];
-    let current = null;
+    const phases = []; let current = null;
     activeMonths.forEach(m => {
-      const p = getPhase(m);
-      if (!current || current.label !== p.label) { current = { ...p, span: 1 }; phases.push(current); } 
-      else { current.span += 1; }
-    });
-    return phases;
-  }, [activeMonths, terminology, competitionMonth, secondaryPeaks, activeTheme]);
+      const p = getPhaseData(m);
+      if (!current || current.phase !== p.phase) { current = { phase: p.phase, color: p.color, span: 1 }; phases.push(current); } else { current.span += 1; }
+    }); return phases;
+  }, [activeMonths, competitionMonth, phaseProps, activeTheme]);
 
-  const chartData = useMemo(() => activeMonths.map(m => ({ name: m, Intensitas: macroValues[m]?.int || 0, Volume: macroValues[m]?.vol || 0 })), [activeMonths, macroValues]);
+  const unifiedSubPhases = useMemo(() => {
+    const subPhases = []; let current = null;
+    activeMonths.forEach(m => {
+      const p = getPhaseData(m);
+      if (!current || current.subPhase !== p.subPhase) { current = { subPhase: p.subPhase, color: p.subColor, span: 1 }; subPhases.push(current); } else { current.span += 1; }
+    }); return subPhases;
+  }, [activeMonths, competitionMonth, phaseProps, activeTheme]);
+
+  const chartData = useMemo(() => activeMonths.map(m => ({ name: m, Intensitas: macroValues[m]?.int || 0, Volume: macroValues[m]?.vol || 0, Peak: macroValues[m]?.peak || 0 })), [activeMonths, macroValues]);
 
   const calculateScore = () => {
-    if (!evaluation.score || !evaluation.target) return { percentage: 0, label: "-", color: "text-slate-400", barColor: "bg-slate-200" };
+    if (!evaluation.score || !evaluation.target || evaluation.score <= 0) return { percentage: 0, label: "-", color: "text-slate-400", barColor: "bg-slate-200" };
     let p = evaluation.isTime ? (evaluation.target / evaluation.score) * 100 : (evaluation.score / evaluation.target) * 100;
+    
+    if (!isFinite(p) || isNaN(p)) p = 0;
+    
     const r = Math.min(Math.round(p), 100);
     if (r >= 90) return { percentage: r, label: "EXCELLENT", color: "text-green-600", barColor: "bg-green-500" };
     if (r >= 75) return { percentage: r, label: "GOOD", color: t.text, barColor: t.bg };
@@ -139,9 +160,18 @@ const App = () => {
   const handleAddMaterial = () => {
     const cleanInput = materialInput.trim();
     if (cleanInput === '') return;
-    if (materials.includes(cleanInput)) return alert(`Materi "${cleanInput}" sudah ada!`);
+    if (allMaterials.includes(cleanInput)) return alert(`Materi "${cleanInput}" sudah ada!`);
     setMaterials([...materials, cleanInput]);
     setMaterialInput('');
+  };
+
+  const removeMaterial = (mToRemove) => {
+    setMaterials(materials.filter(x => x !== mToRemove));
+    setMatrixData(prev => {
+        const newData = { ...prev };
+        Object.keys(newData).forEach(key => { if (key.endsWith(`-${mToRemove}`)) delete newData[key]; });
+        return newData;
+    });
   };
 
   const handleLoadData = (e) => {
@@ -151,60 +181,202 @@ const App = () => {
       try {
         const d = JSON.parse(ev.target.result);
         if(d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
+        if(d.startYear) setStartYear(d.startYear);
         if(d.athleteInfo) setAthleteInfo(d.athleteInfo);
         if(d.startMonth !== undefined) setStartMonth(d.startMonth);
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
+        if(d.phaseProps) setPhaseProps(d.phaseProps);
         if(d.competitionMonth) setCompetitionMonth(d.competitionMonth);
-        if(d.secondaryPeaks) setSecondaryPeaks(d.secondaryPeaks);
-        else if (d.secondaryCompetition) setSecondaryPeaks([d.secondaryCompetition]);
-        if(d.terminology) setTerminology(d.terminology);
-        if(d.macroValues) setMacroValues(d.macroValues);
-        if(d.dailySessions) setDailySessions(d.dailySessions);
-        if(d.matrixData) setMatrixData(d.matrixData);
-        if(d.materials) setMaterials(d.materials);
-        if(d.locations) setLocations(d.locations);
         if(d.tryOutMonths) setTryOutMonths(d.tryOutMonths);
+        if(d.tryInMonths) setTryInMonths(d.tryInMonths);
+        if(d.locations) setLocations(d.locations);
+        if(d.monthlyObjectives) setMonthlyObjectives(d.monthlyObjectives);
+        if(d.macroValues) setMacroValues(d.macroValues);
+        if(d.trainingFactors) setTrainingFactors(d.trainingFactors);
+        if(d.matrixData) setMatrixData(d.matrixData);
+        if(d.testSchedule) setTestSchedule(d.testSchedule);
+        if(d.materials) setMaterials(d.materials);
+        if(d.dailySessions) setDailySessions(d.dailySessions);
         if(d.nutritionNote) setNutritionNote(d.nutritionNote);
-        if(d.microType) setMicroType(d.microType);
         if(d.evaluation) setEvaluation(d.evaluation);
-        if(d.mentalData) { setMentalData(d.mentalData); } 
-        else if (d.mentalScores && d.mentalLabels) {
-          const migratedData = d.mentalLabels.map((lbl, i) => ({ id: `m${i}`, label: lbl, score: d.mentalScores[lbl] || 0 }));
-          setMentalData(migratedData);
-        }
-        alert("Semua data berhasil dimuat dengan aman!");
-      } catch (err) { alert("Format file salah!"); }
+        if(d.mentalData) setMentalData(d.mentalData); 
+        alert("Data Periodisasi Bompa Berhasil Dimuat!");
+      } catch (err) { alert("Format file salah atau rusak!"); }
     };
     reader.readAsText(file); e.target.value = null;
   };
 
   const handleSaveData = () => {
-    const data = { activeTheme, athleteInfo, startMonth, endMonth, competitionMonth, secondaryPeaks, terminology, macroValues, locations, tryOutMonths, dailySessions, matrixData, materials, mentalData, nutritionNote, evaluation, microType };
+    const data = { activeTheme, startYear, athleteInfo, startMonth, endMonth, phaseProps, competitionMonth, tryOutMonths, tryInMonths, locations, monthlyObjectives, macroValues, trainingFactors, matrixData, testSchedule, materials, dailySessions, nutritionNote, evaluation, mentalData };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Plan_${athleteInfo.name}.json`; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Periodisasi_${athleteInfo.name}.json`; a.click();
   };
 
   const handleExportPNG = async () => {
-    const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
+    // Reset scroll & Fix cropping issue by forcing width temporarily
+    window.scrollTo(0, 0);
+    const el = reportRef.current;
+    const originalWidth = el.style.width;
+    const originalMaxWidth = el.style.maxWidth;
+    
+    const scrollContainers = el.querySelectorAll('.overflow-x-auto');
+    const originalStyles = [];
+    scrollContainers.forEach((container) => {
+      originalStyles.push({ overflowX: container.style.overflowX, overflow: container.style.overflow });
+      container.style.overflowX = 'visible';
+      container.style.overflow = 'visible';
+    });
+
+    el.style.width = '1300px'; 
+    el.style.maxWidth = 'none';
+
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, windowWidth: 1300 });
+
+    el.style.width = originalWidth;
+    el.style.maxWidth = originalMaxWidth;
+    scrollContainers.forEach((container, i) => {
+      container.style.overflowX = originalStyles[i].overflowX;
+      container.style.overflow = originalStyles[i].overflow;
+    });
+
     const link = document.createElement('a'); link.href = canvas.toDataURL('image/png');
     link.download = `Plan_${athleteInfo.name}.png`; link.click();
   };
 
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
-    const macroSheet = chartData.map(d => ({ Bulan: d.name, Volume: `${d.Volume}%`, Intensitas: `${d.Intensitas}%`, Fase: getPhase(d.name).label }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(macroSheet), "Makrosiklus");
-    XLSX.writeFile(wb, `Plan_${athleteInfo.name}.xlsx`);
+    const aoa = [];
+    const weeksCols = activeMonths.length * 4;
+
+    aoa.push(['Tahun', ...Array(weeksCols).fill(`${startYear} ${startMonth > endMonth ? '- ' + calculatedEndYear : ''}`)]);
+    
+    let bulanRow = ['Bulan']; activeMonths.forEach(m => { bulanRow.push(m, '', '', ''); }); aoa.push(bulanRow);
+    let mingguRow = ['Minggu']; activeMonths.forEach((m, mIdx) => [1,2,3,4].forEach(w => mingguRow.push((mIdx*4)+w))); aoa.push(mingguRow);
+    
+    let toRow = ['Try Out']; activeMonths.forEach(m => [1,2,3,4].forEach(w => toRow.push(tryOutMonths.includes(m) ? 'TO' : ''))); aoa.push(toRow);
+    let tiRow = ['Try In']; activeMonths.forEach(m => [1,2,3,4].forEach(w => tiRow.push(tryInMonths.includes(m) ? 'TI' : ''))); aoa.push(tiRow);
+    
+    let locRow = ['Waktu/Lokasi']; activeMonths.forEach(m => { locRow.push(locations[m] || '', '', '', ''); }); aoa.push(locRow);
+    let faseRow = ['Fase']; activeMonths.forEach(m => { faseRow.push(getPhaseData(m).phase, '', '', ''); }); aoa.push(faseRow);
+    let subFaseRow = ['Sub Fase']; activeMonths.forEach(m => { subFaseRow.push(getPhaseData(m).subPhase, '', '', ''); }); aoa.push(subFaseRow);
+    let sasaranRow = ['Sasaran Prestasi']; activeMonths.forEach(m => { sasaranRow.push(monthlyObjectives[m] || '', '', '', ''); }); aoa.push(sasaranRow);
+
+    aoa.push(['--- BENTUK LATIHAN ---', ...Array(weeksCols).fill('')]);
+    allMaterials.forEach(mat => {
+       let r = [mat];
+       activeMonths.forEach(m => [1,2,3,4].forEach(w => r.push(matrixData[`${m}-W${w}-${mat}`] ? 'V' : '')));
+       aoa.push(r);
+    });
+
+    aoa.push(['--- TES & EVALUASI ---', ...Array(weeksCols).fill('')]);
+    ['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].forEach(test => {
+       let r = [test];
+       activeMonths.forEach(m => [1,2,3,4].forEach(w => r.push(testSchedule[`${m}-W${w}-${test}`] ? 'V' : '')));
+       aoa.push(r);
+    });
+
+    aoa.push(['--- BEBAN LATIHAN ---', ...Array(weeksCols).fill('')]);
+    let volRow = ['Volume']; activeMonths.forEach(m => { volRow.push(macroValues[m]?.vol, '', '', ''); }); aoa.push(volRow);
+    let intRow = ['Intensitas']; activeMonths.forEach(m => { intRow.push(macroValues[m]?.int, '', '', ''); }); aoa.push(intRow);
+    let peakRow = ['Peak Performance']; activeMonths.forEach(m => { peakRow.push(macroValues[m]?.peak, '', '', ''); }); aoa.push(peakRow);
+
+    aoa.push(['--- PROPORSI FAKTOR (%) ---', ...Array(weeksCols).fill('')]);
+    let fisRow = ['Fisik (%)']; activeMonths.forEach(m => { fisRow.push(trainingFactors[m]?.fisik, '', '', ''); }); aoa.push(fisRow);
+    let tekRow = ['Teknik (%)']; activeMonths.forEach(m => { tekRow.push(trainingFactors[m]?.teknik, '', '', ''); }); aoa.push(tekRow);
+    let takRow = ['Taktik (%)']; activeMonths.forEach(m => { takRow.push(trainingFactors[m]?.taktik, '', '', ''); }); aoa.push(takRow);
+    let psiRow = ['Psikologis (%)']; activeMonths.forEach(m => { psiRow.push(trainingFactors[m]?.psikis, '', '', ''); }); aoa.push(psiRow);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const merges = [];
+    merges.push({ s: {r:0, c:1}, e: {r:0, c:weeksCols} }); 
+    merges.push({ s: {r:9, c:0}, e: {r:9, c:weeksCols} }); 
+    merges.push({ s: {r:9 + allMaterials.length + 1, c:0}, e: {r:9 + allMaterials.length + 1, c:weeksCols} }); 
+    merges.push({ s: {r:9 + allMaterials.length + 1 + 4 + 1, c:0}, e: {r:9 + allMaterials.length + 1 + 4 + 1, c:weeksCols} }); 
+    merges.push({ s: {r:9 + allMaterials.length + 1 + 4 + 1 + 3 + 1, c:0}, e: {r:9 + allMaterials.length + 1 + 4 + 1 + 3 + 1, c:weeksCols} }); 
+
+    activeMonths.forEach((m, i) => {
+      const cStart = 1 + i * 4;
+      const cEnd = cStart + 3;
+      merges.push({ s: {r:1, c:cStart}, e: {r:1, c:cEnd} }); 
+      merges.push({ s: {r:5, c:cStart}, e: {r:5, c:cEnd} }); 
+      merges.push({ s: {r:8, c:cStart}, e: {r:8, c:cEnd} }); 
+      
+      const rStartBeban = 9 + allMaterials.length + 1 + 4 + 1 + 1; 
+      merges.push({ s: {r:rStartBeban, c:cStart}, e: {r:rStartBeban, c:cEnd} });
+      merges.push({ s: {r:rStartBeban+1, c:cStart}, e: {r:rStartBeban+1, c:cEnd} });
+      merges.push({ s: {r:rStartBeban+2, c:cStart}, e: {r:rStartBeban+2, c:cEnd} });
+
+      const rStartFaktor = rStartBeban+3 + 1; 
+      merges.push({ s: {r:rStartFaktor, c:cStart}, e: {r:rStartFaktor, c:cEnd} });
+      merges.push({ s: {r:rStartFaktor+1, c:cStart}, e: {r:rStartFaktor+1, c:cEnd} });
+      merges.push({ s: {r:rStartFaktor+2, c:cStart}, e: {r:rStartFaktor+2, c:cEnd} });
+      merges.push({ s: {r:rStartFaktor+3, c:cStart}, e: {r:rStartFaktor+3, c:cEnd} });
+    });
+
+    let currentC = 1;
+    unifiedPhases.forEach(p => {
+      const cEnd = currentC + (p.span * 4) - 1;
+      merges.push({ s: {r:6, c:currentC}, e: {r:6, c:cEnd} });
+      currentC = cEnd + 1;
+    });
+
+    currentC = 1;
+    unifiedSubPhases.forEach(p => {
+      const cEnd = currentC + (p.span * 4) - 1;
+      merges.push({ s: {r:7, c:currentC}, e: {r:7, c:cEnd} });
+      currentC = cEnd + 1;
+    });
+
+    ws['!merges'] = merges;
+    XLSX.utils.book_append_sheet(wb, ws, "Matrix_Periodisasi");
+    XLSX.writeFile(wb, `Program_${athleteInfo.name}.xlsx`);
+  };
+
+  const handleWA = () => {
+    window.open(`https://wa.me/${WA_NUMBER}?text=Halo%20Coach%20Fiqhi,%20saya%20pengguna%20Aplikasi%20Periodisasi%20Bompa.%20Saya%20sangat%20terbantu!`, '_blank');
   };
 
   const printStyles = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px]" style={printStyles}>
+    <div className="min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px] print:p-0 print:bg-white" style={printStyles}>
       
+      <style type="text/css">
+        {`@media print { @page { size: landscape; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}
+      </style>
+
+      {/* FLOATING ACTION BUTTONS */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50 no-print">
+         <button onClick={() => setShowQrisModal(true)} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 p-3 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110" title="Traktir Kopi Coach">
+            <Coffee className="w-6 h-6" />
+         </button>
+         <button onClick={handleWA} className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110" title="Lapor Bug / Chat WA">
+            <MessageCircle className="w-6 h-6" />
+         </button>
+      </div>
+
+      {/* QRIS MODAL */}
+      {showQrisModal && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden text-center relative">
+            <button onClick={() => setShowQrisModal(false)} className="absolute top-4 right-4 bg-slate-100 p-2 rounded-full hover:bg-slate-200 text-slate-600"><X className="w-4 h-4"/></button>
+            <div className="bg-blue-600 p-6 text-white">
+               <Coffee className="w-10 h-10 mx-auto mb-2 opacity-80" />
+               <h2 className="font-black text-lg">Dukung Pengembangan!</h2>
+               <p className="text-[10px] opacity-80">Traktir kopi untuk update fitur selanjutnya.</p>
+            </div>
+            <div className="p-6 flex flex-col items-center">
+               <img src={QRIS_LINK} alt="QRIS DANA" className="w-48 h-48 object-cover rounded-2xl shadow-md border mb-4" onError={(e) => e.target.src = "https://via.placeholder.com/200?text=QRIS+Image+Error"}/>
+               <p className="text-[10px] font-bold text-slate-500">Scan via aplikasi DANA atau M-Banking Anda.</p>
+               <p className="text-[12px] font-black text-blue-900 mt-2">by fiqhipondaa9</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DAILY */}
       {showDailyModal && (
-        <div className="fixed inset-0 z-[120] bg-slate-900/60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[120] bg-slate-900/60 flex items-center justify-center p-4 no-print">
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border">
             <div className="p-4 bg-slate-900 text-white font-black uppercase flex justify-between"><span>SESI HARIAN: {selectedDay}</span><X className="cursor-pointer" onClick={() => setShowDailyModal(false)}/></div>
             <div className="p-6 space-y-4">
@@ -221,7 +393,7 @@ const App = () => {
       )}
 
       {/* TOOLBAR */}
-      <div className="max-w-[1200px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-4 no-print">
+      <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-6 no-print">
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
           <Palette className="w-4 h-4 text-slate-400" />
           <div className="h-4 w-px bg-slate-200 mx-1"></div>
@@ -229,7 +401,6 @@ const App = () => {
             <button key={key} onClick={() => setActiveTheme(key)} className={`w-4 h-4 rounded-full border-2 transition-all ${activeTheme === key ? 'border-slate-900 scale-125' : 'border-transparent hover:scale-110'}`} style={{ backgroundColor: theme.hex }} title={theme.name} />
           ))}
         </div>
-
         <div className="flex flex-wrap justify-end gap-2">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleLoadData} />
           <button onClick={() => fileInputRef.current.click()} className={`bg-white border px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-sm transition-all uppercase ${t.text} ${t.hoverLight}`}><Upload className="w-3 h-3"/> Buka</button>
@@ -240,310 +411,483 @@ const App = () => {
         </div>
       </div>
 
-      <div ref={reportRef} className="max-w-[1200px] mx-auto p-10 bg-white rounded-3xl border shadow-lg relative overflow-hidden" style={printStyles}>
+      <div ref={reportRef} className="max-w-[1300px] mx-auto bg-white rounded-3xl border shadow-lg relative overflow-hidden print:max-w-none print:border-none print:shadow-none print:rounded-none">
         
-        {/* HEADER PROFIL */}
-        <div className="grid grid-cols-3 gap-8 mb-10 border-b pb-8 items-center">
-          <div className="space-y-4">
-            <div>
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">NAMA TIM / ATLET</label>
-              <input value={athleteInfo.name} onChange={e => setAthleteInfo({...athleteInfo, name: e.target.value})} className={`w-full text-2xl font-black outline-none uppercase bg-transparent ${t.textDark}`} />
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kategori Usia</label>
-                <select value={athleteInfo.age} onChange={e => setAthleteInfo({...athleteInfo, age: e.target.value})} className="w-full text-xs font-bold text-slate-600 outline-none uppercase bg-transparent border-b pb-1 border-slate-200 cursor-pointer">
-                  <option value="U13 (<14 Tahun)">U13 (&lt;14 Tahun)</option>
-                  <option value="U15-U16 (14-16 Tahun)">U15-U16 (14-16 Tahun)</option>
-                  <option value="Senior (>18 Tahun)">Senior (&gt;18 Tahun)</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Target Utama</label>
-                <input value={athleteInfo.target} onChange={e => setAthleteInfo({...athleteInfo, target: e.target.value})} className="w-full text-xs font-bold text-slate-600 outline-none uppercase bg-transparent border-b pb-1 border-slate-200" />
-              </div>
-            </div>
+        {/* ==========================================
+            PANEL KENDALI: 8 LANGKAH WIZARD
+            ========================================== */}
+        <div className="bg-slate-50 border-b border-slate-200 p-6 no-print">
+           <h2 className="font-black text-sm uppercase text-slate-800 mb-4 flex items-center gap-2"><Target className={`w-5 h-5 ${t.text}`}/> Control Panel: SOP Pembuatan Periodisasi</h2>
+           
+           <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+             {[1,2,3,4,5,6,7,8].map(step => (
+               <button key={step} onClick={() => setActiveStep(step)} className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl border text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${activeStep === step ? `${t.bg} text-white shadow-md border-transparent` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+                 {activeStep > step ? <CheckCircle2 className="w-3 h-3"/> : `Langkah ${step}`}
+               </button>
+             ))}
+           </div>
+
+           <div className="bg-white p-5 rounded-2xl border shadow-sm min-h-[160px] flex flex-col justify-between">
+             {activeStep === 1 && (
+               <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">1. Pengaturan Identitas & Total Waktu</h3>
+                 <div className="grid grid-cols-5 gap-4">
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">CABANG OLAHRAGA</label><input value={athleteInfo.cabor} onChange={e => setAthleteInfo({...athleteInfo, cabor: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA ATLET / TIM</label><input value={athleteInfo.name} onChange={e => setAthleteInfo({...athleteInfo, name: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TAHUN MULAI</label><input type="number" value={startYear} onChange={e => setStartYear(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" title="Tahun Mulai"/></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN MULAI</label><select value={startMonth} onChange={e => setStartMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m}</option>)}</select></div>
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN SELESAI</label><select value={endMonth} onChange={e => setEndMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m} {startMonth > i ? '(Tahun Depan)' : ''}</option>)}</select></div>
+                 </div>
+                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(2)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
+               </div>
+             )}
+             {activeStep === 2 && (
+               <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">2. Pembagian Periode & Fase (%)</h3>
+                 <div className="grid grid-cols-2 gap-6">
+                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">PROPORSI FASE PERSIAPAN UMUM VS KHUSUS (%)</label><input type="number" value={phaseProps.prep} onChange={e => setPhaseProps({...phaseProps, prep: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[11px] font-black text-blue-600" title="Contoh: 50 berarti setengah Persiapan Umum, setengah Persiapan Khusus"/></div>
+                 </div>
+                 <p className="text-[9px] font-bold text-slate-400 mt-2 italic">*Aplikasi menggunakan metode Backward Planning. Fase akan dihitung mundur dari Target Bulan Kompetisi Utama Anda.</p>
+                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(3)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
+               </div>
+             )}
+             {activeStep === 3 && (
+               <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">3. Penentuan Peaking & Uji Coba</h3>
+                 <div className="grid grid-cols-3 gap-6">
+                   <div>
+                     <label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET KOMPETISI UTAMA (PEAK)</label>
+                     <select value={competitionMonth} onChange={e => setCompetitionMonth(e.target.value)} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase text-red-600 cursor-pointer">{activeMonths.map(m=><option key={m} value={m}>{m}</option>)}</select>
+                   </div>
+                   <div className="col-span-2 flex gap-4">
+                     <div className="flex-1 bg-purple-50 p-2 rounded-xl border border-purple-100">
+                       <label className="block text-[9px] font-black text-purple-700 mb-1">TRY OUT (TANDANG)</label>
+                       <div className="flex flex-wrap gap-1">{activeMonths.map(m => (<button key={`to-${m}`} onClick={()=>setTryOutMonths(prev=>prev.includes(m)?prev.filter(x=>x!==m):[...prev,m])} className={`px-2 py-1 text-[8px] font-black rounded transition-colors ${tryOutMonths.includes(m)?'bg-purple-600 text-white':'bg-white text-slate-400 border hover:border-purple-300'}`}>{m}</button>))}</div>
+                     </div>
+                     <div className="flex-1 bg-orange-50 p-2 rounded-xl border border-orange-100">
+                       <label className="block text-[9px] font-black text-orange-700 mb-1">TRY IN (KANDANG)</label>
+                       <div className="flex flex-wrap gap-1">{activeMonths.map(m => (<button key={`ti-${m}`} onClick={()=>setTryInMonths(prev=>prev.includes(m)?prev.filter(x=>x!==m):[...prev,m])} className={`px-2 py-1 text-[8px] font-black rounded transition-colors ${tryInMonths.includes(m)?'bg-orange-500 text-white':'bg-white text-slate-400 border hover:border-orange-300'}`}>{m}</button>))}</div>
+                     </div>
+                   </div>
+                 </div>
+                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(4)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
+               </div>
+             )}
+             {activeStep === 4 && (
+               <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">4. Masukan Komponen Latihan Tambahan</h3>
+                 <div className="flex gap-2 flex-wrap items-center">
+                   {LOCKED_COMPONENTS.map(c => <span key={c} className="px-3 py-1.5 bg-slate-100 border text-[9px] font-black rounded-lg text-slate-600 uppercase">{c}</span>)}
+                   {materials.filter(m => !LOCKED_COMPONENTS.includes(m)).map(c => (
+                     <span key={c} className={`px-3 py-1.5 border text-[9px] font-black rounded-lg uppercase flex items-center gap-2 ${t.bgLight} ${t.text} ${t.borderLight}`}>
+                       {c} <button onClick={() => removeMaterial(c)} className="text-red-500 hover:text-red-700 focus:outline-none"><X className="w-3 h-3"/></button>
+                     </span>
+                   ))}
+                 </div>
+                 <div className="mt-3 flex gap-2 w-72">
+                   <input type="text" value={materialInput} onChange={e => setMaterialInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMaterial()} className="border p-2 rounded-lg outline-none text-[10px] w-full focus:ring-1" style={{ '--tw-ring-color': t.hex }} placeholder="Ketik materi tambahan (Cth: Servis)..."/>
+                   <button onClick={handleAddMaterial} className={`px-3 rounded-lg text-white font-black ${t.bg} ${t.hoverBg}`}><Plus className="w-4 h-4"/></button>
+                 </div>
+                 <div className="mt-4 flex justify-between items-center">
+                    <p className="text-[9px] font-bold text-slate-400 italic">*Komponen wajib telah dikunci. Anda bisa menambah materi khusus di sini.</p>
+                    <button onClick={() => setActiveStep(5)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button>
+                 </div>
+               </div>
+             )}
+             {(activeStep === 5 || activeStep === 6) && (
+               <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">5 & 6. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
+                 <p className="text-[9px] font-bold text-slate-500 mb-3">Silakan atur angka parameter beban untuk setiap bulan secara manual. Grafik akan otomatis menyesuaikan.</p>
+                 <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                   {activeMonths.map(m => (
+                     <div key={m} className="min-w-[70px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
+                       <span className="text-[9px] font-black uppercase block mb-1">{m}</span>
+                       <input type="number" value={macroValues[m]?.vol} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], vol:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black text-blue-600 p-1" title="Volume"/>
+                       <input type="number" value={macroValues[m]?.int} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], int:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black text-red-600 p-1" title="Intensitas"/>
+                       <input type="number" min="1" max="5" value={macroValues[m]?.peak} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], peak:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black text-orange-500 p-1" title="Peaking (1-5)"/>
+                     </div>
+                   ))}
+                 </div>
+                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(7)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
+               </div>
+             )}
+             {activeStep === 7 && (
+               <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">7. Proporsi Faktor Latihan (%)</h3>
+                 <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                   {activeMonths.map(m => (
+                     <div key={`fac-${m}`} className="min-w-[100px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
+                       <span className="text-[9px] font-black uppercase block mb-1">{m}</span>
+                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Fis</span><input type="number" value={trainingFactors[m]?.fisik} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], fisik:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
+                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Tek</span><input type="number" value={trainingFactors[m]?.teknik} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], teknik:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
+                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Tak</span><input type="number" value={trainingFactors[m]?.taktik} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], taktik:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
+                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Psi</span><input type="number" value={trainingFactors[m]?.psikis} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], psikis:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
+                     </div>
+                   ))}
+                 </div>
+                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(8)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
+               </div>
+             )}
+             {activeStep === 8 && (
+               <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col justify-center items-center h-full gap-4 text-center py-4">
+                 <div>
+                   <h3 className="font-black text-sm text-slate-800 uppercase mb-2">8. Matriks Kalender Siap Dievaluasi</h3>
+                   <p className="text-[10px] font-bold text-slate-500 max-w-md mx-auto">Semua variabel telah diatur. Langkah terakhir adalah menceklis jadwal tes pada matriks kalender, dan mengisi catatan gizi serta menu harian di panel bawah.</p>
+                 </div>
+                 <button onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} className={`px-8 py-3 text-white font-black text-[11px] rounded-xl uppercase flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ${t.bg} ${t.hoverBg}`}>Gulir ke Bawah Untuk Lihat Matriks <ArrowRight className="w-4 h-4"/></button>
+               </div>
+             )}
+           </div>
+        </div>
+
+        {/* HEADER IDENTITAS PRINT */}
+        <div className="p-8 pb-4 print:pt-4">
+           <table className="text-[10px] font-black text-slate-700 uppercase print:text-[12px]">
+             <tbody>
+               <tr><td className="w-32 pb-1">Cabang Olahraga</td><td className="w-4 pb-1">:</td><td className="pb-1">{athleteInfo.cabor}</td></tr>
+               <tr><td className="pb-1">Usia</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.age}</td></tr>
+               <tr><td className="pb-1">Provinsi / Daerah</td><td className="pb-1">:</td><td className="pb-1"><input value={athleteInfo.prov} onChange={e=>setAthleteInfo({...athleteInfo, prov:e.target.value})} className="border-b border-slate-300 outline-none bg-transparent w-48 print:border-none print:w-auto"/></td></tr>
+               <tr><td className="pb-1">Pelatih</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.coach}</td></tr>
+               <tr><td className="pb-1 pt-2">Nama Atlet / Tim</td><td className="pb-1 pt-2">:</td><td className="pb-1 pt-2 text-sm text-blue-900 print:text-black">{athleteInfo.name}</td></tr>
+             </tbody>
+           </table>
+        </div>
+
+        {/* =========================================
+            MASTER TIMELINE (KALENDER RAKSASA)
+            ========================================= */}
+        <div className="px-6 pb-6 print:px-0">
+          <div className="flex justify-between items-center mb-3">
+             <h2 className="text-xl font-black uppercase text-slate-900 tracking-tighter print:text-2xl">PERIODISASI LATIHAN</h2>
+             <div className="flex gap-4">
+               <div className="text-center"><p className="text-[8px] font-bold text-slate-400 uppercase print:text-[10px]">Target / Sasaran Latihan Tahunan</p><p className="font-black text-[11px] uppercase border-b-2 border-slate-900 pb-1 print:text-[14px]">{athleteInfo.target}</p></div>
+             </div>
           </div>
-          <div className="flex flex-col items-center">
-            <h1 className="text-xl font-black text-slate-900 italic text-center leading-tight uppercase tracking-tighter">ANNUAL TRAINING PLAN<br/><span className={`text-sm ${t.text}`}>by fiqhipondaa9</span></h1>
-          </div>
-          <div className="text-right space-y-4">
-            <div>
-              <label className="text-[8px] font-black text-slate-400 uppercase">COACH / ADMINISTRATOR</label>
-              <input value={athleteInfo.coach} onChange={e => setAthleteInfo({...athleteInfo, coach: e.target.value})} className={`block text-xs font-black text-right outline-none uppercase w-full bg-transparent ${t.text}`} />
-            </div>
-            <div className={`flex justify-end gap-3 font-black ${t.textDark}`}>
-              <select value={startMonth} onChange={e => setStartMonth(Number(e.target.value))} className="bg-transparent outline-none uppercase cursor-pointer">{months.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
-              <span>-</span>
-              <select value={endMonth} onChange={e => setEndMonth(Number(e.target.value))} className="bg-transparent outline-none uppercase cursor-pointer">{months.map((m, i) => <option key={i} value={i} disabled={i < startMonth}>{m}</option>)}</select>
-            </div>
+
+          <div className="overflow-x-auto pb-4 custom-scrollbar border rounded-xl shadow-sm border-slate-300 print:overflow-visible print:border-none print:shadow-none print:pb-0">
+            <table className="w-full border-collapse min-w-[1200px] print:min-w-full print:text-[10px]">
+              <thead>
+                {/* TAHUN */}
+                <tr>
+                  <th className="p-2 border-b border-r bg-slate-100 sticky left-0 z-20 text-center text-[9px] font-black text-slate-500 uppercase min-w-[180px] print:static">Tahun</th>
+                  <th colSpan={activeMonths.length * 4} className="p-1 border-b bg-yellow-300 text-center text-[10px] font-black text-yellow-900 uppercase print:bg-transparent print:border print:text-black">{startYear} {startMonth > endMonth ? `- ${calculatedEndYear}` : ''}</th>
+                </tr>
+                {/* BULAN */}
+                <tr>
+                  <th className="p-2 border-b border-r bg-slate-100 sticky left-0 z-20 text-center text-[9px] font-black text-slate-500 uppercase print:static">Bulan</th>
+                  {activeMonths.map(m => (
+                    <th key={`tm-${m}`} colSpan={4} className="p-1 border-b border-r bg-yellow-200 text-center text-[9px] font-black text-yellow-900 uppercase print:bg-transparent print:border print:text-black">{m}</th>
+                  ))}
+                </tr>
+                {/* MINGGU ABSOLUT (1-52) */}
+                <tr>
+                  <th className="p-2 border-b border-r bg-slate-100 sticky left-0 z-20 text-center text-[9px] font-black text-slate-500 uppercase print:static">Minggu</th>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
+                    const absWeek = (mIdx * 4) + w;
+                    return <th key={`aw-${m}-${w}`} className="p-1 border-b border-r bg-yellow-100 text-center text-[8px] font-black text-yellow-900 w-8 print:bg-transparent print:border print:text-black">{absWeek}</th>
+                  }))}
+                </tr>
+                {/* TRY OUT & TRY IN */}
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-purple-700 uppercase print:static print:text-black">Try Out</th>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <th key={`to-${m}-${w}`} className={`p-1 border-b border-r text-center ${tryOutMonths.includes(m) ? 'bg-purple-500 print:bg-gray-400' : 'bg-white'}`}></th>
+                  )))}
+                </tr>
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-orange-600 uppercase print:static print:text-black">Try In</th>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <th key={`ti-${m}-${w}`} className={`p-1 border-b border-r text-center ${tryInMonths.includes(m) ? 'bg-orange-400 print:bg-gray-300' : 'bg-white'}`}></th>
+                  )))}
+                </tr>
+                {/* LOKASI / WAKTU KALENDER */}
+                <tr>
+                  <th className="p-4 border-b border-r bg-slate-50 sticky left-0 z-20 text-center text-[10px] font-black text-slate-600 uppercase print:static">Waktu / Kalender<br/><span className="text-[8px] font-bold text-slate-400 print:text-black">(Lokasi Event)</span></th>
+                  {activeMonths.map(m => (
+                    <th key={`loc-${m}`} colSpan={4} className="p-1 border-b border-r bg-white text-center align-middle relative h-16 print:border">
+                       <input type="text" value={locations[m]||''} onChange={e=>setLocations({...locations, [m]:e.target.value})} className="absolute inset-0 w-full h-full text-center text-[8px] font-black uppercase outline-none bg-transparent" placeholder="-"/>
+                    </th>
+                  ))}
+                </tr>
+                {/* FASE & SUB FASE */}
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-100 sticky left-0 z-20 text-left pl-4 text-[9px] font-black text-slate-500 uppercase print:static">Fase</th>
+                  {unifiedPhases.map((p, idx) => (
+                    <th key={`p-${idx}`} colSpan={p.span * 4} className={`p-1 border-b border-r text-[9px] font-black uppercase text-center ${p.color} print:bg-transparent print:border print:text-black`}>{p.phase}</th>
+                  ))}
+                </tr>
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-100 sticky left-0 z-20 text-left pl-4 text-[9px] font-black text-slate-500 uppercase print:static">Sub Fase</th>
+                  {unifiedSubPhases.map((p, idx) => (
+                    <th key={`sp-${idx}`} colSpan={p.span * 4} className={`p-1 border-b border-r text-[8px] font-black uppercase text-center ${p.color} print:bg-transparent print:border print:text-black`}>{p.subPhase}</th>
+                  ))}
+                </tr>
+                {/* SASARAN PRESTASI */}
+                <tr>
+                  <th className="p-2 border-b border-r bg-slate-100 sticky left-0 z-20 text-left pl-4 text-[9px] font-black text-slate-500 uppercase print:static">Sasaran Prestasi</th>
+                  {activeMonths.map(m => (
+                    <th key={`obj-${m}`} colSpan={4} className="p-1 border-b border-r bg-white font-normal print:border">
+                      <input type="text" value={monthlyObjectives[m]} onChange={e => setMonthlyObjectives({...monthlyObjectives, [m]: e.target.value})} className="w-full text-center text-[8px] font-bold outline-none text-slate-600 bg-transparent uppercase" placeholder="Ketik Sasaran..."/>
+                    </th>
+                  ))}
+                </tr>
+                {/* BENTUK LATIHAN HEADER */}
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-200 sticky left-0 z-20 text-center text-[10px] font-black text-slate-700 uppercase print:static print:border" rowSpan={allMaterials.length + 1}>Bentuk Latihan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* BENTUK LATIHAN (LOCKED + CUSTOM) */}
+                {allMaterials.map((mat, idx) => {
+                  let rowColor = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                  if(mat.includes('Endurance') || mat.includes('Strength') || mat.includes('Speed')) rowColor = 'bg-blue-50/50 print:bg-white';
+                  if(mat.includes('Teknik')) rowColor = 'bg-emerald-50/50 print:bg-white';
+                  if(mat.includes('Mental')) rowColor = 'bg-yellow-50/50 print:bg-white';
+
+                  return (
+                  <tr key={mat} className={rowColor}>
+                    <td className="p-1.5 px-3 border-b border-r sticky left-0 z-10 font-bold text-[9px] text-slate-700 uppercase shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] pl-4 print:static print:shadow-none print:border">{mat}</td>
+                    {activeMonths.map(m => [1,2,3,4].map(w => (
+                      <td key={`mat-${m}-W${w}`} className="p-1 border-b border-r text-center print:border">
+                        <PrintSafeCheckbox checked={!!matrixData[`${m}-W${w}-${mat}`]} onChange={() => setMatrixData(prev => ({...prev, [`${m}-W${w}-${mat}`]: !prev[`${m}-W${w}-${mat}`]}))} colorHex={t.hex} />
+                      </td>
+                    )))}
+                  </tr>
+                )})}
+
+                {/* SIKLUS MAKRO / MIKRO INFO */}
+                <tr>
+                  <td className="p-1.5 px-3 border-b border-r bg-slate-100 sticky left-0 z-10 font-black text-[9px] text-slate-500 uppercase print:static print:border print:bg-transparent">Siklus Makro</td>
+                  {activeMonths.map((m, idx) => <td key={`makro-${m}`} colSpan={4} className="p-1 border-b border-r bg-yellow-100 text-center text-[9px] font-black text-yellow-900 print:bg-transparent print:border print:text-black">{idx + 1}</td>)}
+                </tr>
+                <tr>
+                  <td className="p-1.5 px-3 border-b border-r bg-slate-100 sticky left-0 z-10 font-black text-[9px] text-slate-500 uppercase print:static print:border print:bg-transparent">Siklus Mikro</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
+                    const absWeek = (mIdx * 4) + w;
+                    return <td key={`mikro-${m}-${w}`} className="p-1 border-b border-r bg-cyan-100 text-center text-[8px] font-black text-cyan-900 w-8 print:bg-transparent print:border print:text-black">{absWeek}</td>
+                  }))}
+                </tr>
+
+                {/* TES KESEHATAN, FISIK, TEKNIK, PSIKIS */}
+                {['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].map(test => (
+                  <tr key={`test-${test}`} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">{test}</td>
+                    {activeMonths.map(m => [1,2,3,4].map(w => (
+                      <td key={`t-${m}-W${w}`} className="p-1 border-b border-r text-center print:border">
+                        <PrintSafeCheckbox checked={!!testSchedule[`${m}-W${w}-${test}`]} onChange={() => setTestSchedule(prev => ({...prev, [`${m}-W${w}-${test}`]: !prev[`${m}-W${w}-${test}`]}))} colorHex="#ef4444" />
+                      </td>
+                    )))}
+                  </tr>
+                ))}
+
+                {/* BEBAN LATIHAN */}
+                <tr>
+                  <td className="p-1 border-b border-r bg-slate-200 sticky left-0 z-10 text-center text-[10px] font-black text-slate-700 uppercase print:static print:border print:bg-transparent" rowSpan={4}>Latihan</td>
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-black text-[9px] text-blue-600 pl-4 print:static print:border print:text-black">Volume</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`v-${m}-${w}`} className="p-0 border-b border-r bg-white text-center print:border"><div className="h-full w-full bg-blue-100 text-[7px] font-bold text-blue-800 flex items-center justify-center print:bg-transparent print:text-black">{w===1 ? macroValues[m]?.vol : ''}</div></td>
+                  )))}
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-black text-[9px] text-red-600 pl-4 print:static print:border print:text-black">Intensitas</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`i-${m}-${w}`} className="p-0 border-b border-r bg-white text-center print:border"><div className="h-full w-full bg-red-100 text-[7px] font-bold text-red-800 flex items-center justify-center print:bg-transparent print:text-black">{w===1 ? macroValues[m]?.int : ''}</div></td>
+                  )))}
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-black text-[9px] text-orange-600 pl-4 print:static print:border print:text-black">Peak Performance</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`pk-${m}-${w}`} className="p-0 border-b border-r bg-white text-center print:border"><div className="h-full w-full bg-orange-100 text-[7px] font-bold text-orange-800 flex items-center justify-center print:bg-transparent print:text-black">{w===1 ? macroValues[m]?.peak : ''}</div></td>
+                  )))}
+                </tr>
+
+                {/* FAKTOR PROPORSI */}
+                <tr>
+                  <td className="p-1 border-b border-r bg-slate-200 sticky left-0 z-10 text-center text-[10px] font-black text-slate-700 uppercase print:static print:border print:bg-transparent" rowSpan={5}>Faktor (%)</td>
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Fisik</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`f-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.fisik : ''}</td>
+                  )))}
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Teknik</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`t-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.teknik : ''}</td>
+                  )))}
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Taktik</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`tak-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.taktik : ''}</td>
+                  )))}
+                </tr>
+                <tr>
+                  <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Psikologis</td>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                    <td key={`p-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.psikis : ''}</td>
+                  )))}
+                </tr>
+
+                {/* GRAFIK RAKSASA TERINTEGRASI */}
+                <tr>
+                  <td className="p-4 border-b border-r bg-white sticky left-0 z-10 font-black text-[10px] text-slate-400 uppercase align-middle text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:border print:shadow-none">
+                     Grafik Dinamika<br/>Beban
+                     <div className="flex flex-col gap-1 mt-4 items-center print:hidden">
+                        <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">Volume</span>
+                        <span className="text-[8px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">Intensitas</span>
+                        <span className="text-[8px] font-black text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded border border-yellow-200 mt-2">Peaking Area</span>
+                     </div>
+                  </td>
+                  <td colSpan={activeMonths.length * 4} className="p-0 border-b border-r bg-white align-top print:border">
+                    <div className="h-64 w-full mt-4 print:h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData} margin={{ left: 30, right: 30, top: 10, bottom: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#f1f5f9"/>
+                          <XAxis dataKey="name" hide />
+                          <YAxis yAxisId="left" hide domain={[0, 100]}/>
+                          <YAxis yAxisId="right" orientation="right" hide domain={[0, 5]}/>
+                          <RechartsTooltip/>
+                          <ReferenceLine yAxisId="left" x={competitionMonth} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'insideTopRight', value: 'PEAK', fill: '#ef4444', fontSize: 10, fontWeight: 'black' }} />
+                          <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="Peak" fill="#fef08a" stroke="#eab308" opacity={0.3} strokeWidth={2} />
+                          <Line isAnimationActive={false} yAxisId="left" type="monotone" name="Intensitas" dataKey="Intensitas" stroke="#ef4444" strokeWidth={3} dot={{r: 4, fill: '#ef4444'}} activeDot={{r: 6}}/>
+                          <Line isAnimationActive={false} yAxisId="left" type="monotone" name="Volume" dataKey="Volume" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} activeDot={{r: 6}}/>
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-8">
-          {/* MAKROSIKLUS (COLS 1-3) */}
-          <div className="col-span-3 space-y-8">
-            <div className="border p-8 rounded-3xl bg-white shadow-sm relative border-slate-100">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Zap className="text-orange-500 w-5 h-5"/> Grafik Beban Makrosiklus</h2>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-1"><div className="w-3 h-1 bg-red-500 rounded-full"/><span className="text-[8px] font-black text-slate-400 uppercase">Intensitas</span></div>
-                  <div className="flex items-center gap-1"><div className="w-3 h-1 rounded-full" style={{backgroundColor: t.hex}}/><span className="text-[8px] font-black text-slate-400 uppercase">Volume</span></div>
+        {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
+        <div className="grid grid-cols-2 gap-8 mb-8 no-print px-6 mt-8">
+          <div className="border p-6 rounded-3xl bg-white shadow-sm flex flex-col justify-between border-slate-200">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter ${t.textDark}`}><BarChart2 className="w-4 h-4"/> Template Siklus Mikro Aktif</h2>
+              </div>
+              <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[9px] font-black uppercase text-slate-400">Tipe Minggu Latihan:</span>
+                  <select value={microType} onChange={(e) => setMicroType(e.target.value)} className={`flex-1 bg-transparent text-[11px] font-black outline-none cursor-pointer uppercase ${t.text}`}>
+                    {Object.keys(microTypesDesc).map(k => <option key={k} value={k}>{k}</option>)}
+                  </select>
                 </div>
+                <p className="text-[9px] font-bold text-slate-500 italic">{microTypesDesc[microType]}</p>
               </div>
-              
-              <div className="flex w-full mb-4 gap-1 h-7">
-                {unifiedPhases.map((p, idx) => (
-                  <div key={idx} className={`flex items-center justify-center rounded-lg font-black text-[9px] uppercase shadow-sm border border-white/20 ${p.color}`} style={{ flex: p.span }}>{p.label}</div>
-                ))}
-              </div>
-
-              <div className="h-72">
+              <div className="h-40 mb-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ left: 20, right: 20, top: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                    <XAxis dataKey="name" interval={0} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} axisLine={false} tickLine={false}/>
+                  <BarChart data={Object.entries(dailySessions).map(([day, s]) => ({day, val: (s.morning.menu ? 50 : 0) + (s.afternoon.menu ? 50 : 0)}))} onClick={d => { if(d.activeLabel) { setSelectedDay(d.activeLabel); setShowDailyModal(true); } }}>
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold'}}/>
                     <YAxis hide domain={[0, 100]}/>
-                    <RechartsTooltip/>
-                    {tryOutMonths.map(m => activeMonths.includes(m) && <ReferenceLine key={m} x={m} stroke="#9333ea" strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: locations[m] || 'TO', fill: '#9333ea', fontSize: 8, fontWeight: 'bold' }} />)}
-                    
-                    <ReferenceLine x={competitionMonth} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'insideTopRight', value: 'TARGET UTAMA', fill: '#ef4444', fontSize: 9, fontWeight: 'bold' }} />
-                    
-                    {secondaryPeaks.map(sp => (
-                      activeMonths.includes(sp) && sp !== competitionMonth && (
-                        <ReferenceLine key={`sp-${sp}`} x={sp} stroke="#eab308" strokeDasharray="5 5" label={{ position: 'insideTopLeft', value: 'TARGET ANTARA', fill: '#eab308', fontSize: 9, fontWeight: 'bold' }} />
-                      )
-                    ))}
-
-                    <Line type="monotone" name="Intensitas" dataKey="Intensitas" stroke="#ef4444" strokeWidth={5} dot={{r: 5, fill: '#ef4444'}} activeDot={{r: 8}}/>
-                    <Line type="monotone" name="Volume" dataKey="Volume" stroke={t.hex} strokeWidth={5} dot={{r: 5, fill: t.hex}} activeDot={{r: 8}}/>
-                  </LineChart>
+                    <Bar isAnimationActive={false} dataKey="val" radius={[8, 8, 0, 0]} barSize={40} cursor="pointer">
+                      {Object.entries(dailySessions).map(([day, s], idx) => <Cell key={idx} fill={s.morning.menu && s.afternoon.menu ? t.hex : s.morning.menu || s.afternoon.menu ? '#eab308' : '#f1f5f9'} />)}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              <div className="mt-10 grid grid-cols-12 gap-2">
-                {activeMonths.map(m => (
-                  <div key={m} className="bg-slate-50 p-2 rounded-2xl border border-slate-100 text-center space-y-1 shadow-sm">
-                    <span className="font-black text-slate-400 text-[9px] uppercase block mb-1">{m}</span>
-                    <input type="number" value={macroValues[m]?.int} onChange={e => setMacroValues({...macroValues, [m]: {...macroValues[m], int: Number(e.target.value)}})} className="w-full text-center font-black text-red-600 bg-white border border-red-50 rounded-lg p-1 outline-none text-[10px]" title="Intensitas %"/>
-                    <input type="number" value={macroValues[m]?.vol} onChange={e => setMacroValues({...macroValues, [m]: {...macroValues[m], vol: Number(e.target.value)}})} className={`w-full text-center font-black bg-white border rounded-lg p-1 outline-none text-[10px] ${t.text} ${t.borderLight}`} title="Volume %"/>
-                    <input type="number" min="1" max="5" value={macroValues[m]?.peak || 3} onChange={e => setMacroValues({...macroValues, [m]: {...macroValues[m], peak: Number(e.target.value)}})} className="w-full text-center font-black text-orange-500 bg-orange-50 border border-orange-100 rounded-lg p-1 outline-none text-[10px] mt-1" title="Peaking Index (1-5)"/>
-                  </div>
-                ))}
-              </div>
             </div>
-            
-            {/* ROW 2 KIRI: BIOMOTORIK & MICROCYCLE */}
-            <div className="grid grid-cols-2 gap-8">
-              <div className="border p-6 rounded-3xl bg-slate-50/50 flex flex-col h-full shadow-sm">
-                <h2 className="font-black uppercase tracking-tighter flex items-center gap-2 mb-4"><Dumbbell className="text-slate-600 w-4 h-4"/> Fase Biomotorik Spesifik</h2>
-                
-                {athleteInfo.age.includes('U13') && activeBiomotor === 'Strength' && (
-                  <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-xl flex gap-2 items-start shadow-sm">
-                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"/>
-                    <p className="text-[9px] font-bold text-red-700 leading-tight">PERINGATAN LTAD BOMPA: Atlet U13 dilarang keras melakukan beban mekanik (MxS/Hipertrofi). Wajib fokus pada Bodyweight dan Adaptasi Anatomi.</p>
-                  </div>
-                )}
-
-                <div className="flex bg-white p-1 rounded-xl mb-4 border">
-                  {['Strength', 'Endurance', 'Speed'].map(type => (
-                    <button key={type} onClick={() => setActiveBiomotor(type)} className={`flex-1 py-1.5 text-[10px] font-black rounded-lg transition-all ${activeBiomotor === type ? t.bg + ' text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>{type.toUpperCase()}</button>
-                  ))}
-                </div>
-                <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
-                  {biomotorData[activeBiomotor].map(p => (
-                    <div key={p.id} className="p-3 rounded-2xl border-2 transition-all bg-white border-slate-100 hover:border-slate-200 cursor-pointer">
-                       <p className={`text-[10px] font-black uppercase mb-1 ${t.textDark}`}>{p.id}</p>
-                       <p className={`text-[9px] font-bold mb-0.5 ${t.text}`}>{p.param}</p>
-                       <p className="text-[8px] font-black text-orange-500 mb-1">{p.rest}</p>
-                       <p className="text-[8px] text-slate-500 italic">{p.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border p-6 rounded-3xl bg-white shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter ${t.textDark}`}><BarChart2 className="w-4 h-4"/> Siklus Mikro (Daily)</h2>
-                  </div>
-                  
-                  <div className="mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-black uppercase text-slate-400">Tipe Minggu Latihan:</span>
-                      <select value={microType} onChange={(e) => setMicroType(e.target.value)} className={`flex-1 bg-transparent text-[10px] font-black outline-none cursor-pointer uppercase ${t.text}`}>
-                        {Object.keys(microTypesDesc).map(k => <option key={k} value={k}>{k}</option>)}
-                      </select>
-                    </div>
-                    <p className="text-[8px] font-bold text-slate-500 italic">{microTypesDesc[microType]}</p>
-                  </div>
-
-                  <div className="h-32 mb-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={Object.entries(dailySessions).map(([day, s]) => ({day, val: (s.morning.menu ? 50 : 0) + (s.afternoon.menu ? 50 : 0)}))} onClick={d => { if(d.activeLabel) { setSelectedDay(d.activeLabel); setShowDailyModal(true); } }}>
-                        <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold'}}/>
-                        <YAxis hide domain={[0, 100]}/>
-                        <Bar dataKey="val" radius={[8, 8, 0, 0]} barSize={35} cursor="pointer">
-                          {Object.entries(dailySessions).map(([day, s], idx) => <Cell key={idx} fill={s.morning.menu && s.afternoon.menu ? t.hex : s.morning.menu || s.afternoon.menu ? '#eab308' : '#f1f5f9'} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
+            <div className="mt-2 p-3 bg-green-50 rounded-xl border border-green-100 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600 flex-shrink-0"/>
+              <span className="text-[9px] font-bold text-green-700 leading-tight">Klik batang grafik untuk menyusun menu. Grafik ini bertindak sebagai kerangka/template harian bagi pelatih asisten.</span>
             </div>
           </div>
 
-          {/* SIDEBAR (COL 4) */}
-          <div className="space-y-8">
-            <div className={`border p-6 rounded-3xl bg-white shadow-sm ${t.borderLight}`}>
-               <h2 className={`font-black uppercase flex items-center gap-2 mb-4 ${t.text}`}><Trophy className="w-4 h-4"/> Evaluasi Fisik 1RM</h2>
-               <input value={evaluation.name} onChange={e => setEvaluation({...evaluation, name: e.target.value})} className={`w-full mb-3 p-1 border-b font-black outline-none uppercase ${t.textDark}`} placeholder="Nama Tes..." />
-               <div className="flex gap-2 mb-3">
-                 <input type="number" value={evaluation.score} onChange={e => setEvaluation({...evaluation, score: Number(e.target.value)})} className={`w-1/2 p-2 border rounded-xl text-center font-black ${t.text}`} title="Skor Atlet" />
-                 <input type="number" value={evaluation.target} onChange={e => setEvaluation({...evaluation, target: Number(e.target.value)})} className="w-1/2 p-2 border rounded-xl text-center font-black text-slate-400" title="Target Skor" />
+          <div className="space-y-6">
+            <div className={`border p-6 rounded-3xl bg-white shadow-sm flex flex-col border-slate-200`}>
+               <h2 className={`font-black uppercase flex items-center gap-2 mb-4 ${t.text}`}><Trophy className="w-4 h-4"/> Evaluasi Kemampuan Fisik</h2>
+               <input value={evaluation.name} onChange={e => setEvaluation({...evaluation, name: e.target.value})} className={`w-full mb-3 p-2 border-b font-black outline-none uppercase bg-slate-50 ${t.textDark}`} placeholder="Nama Tes Utama..." />
+               <div className="flex gap-3 mb-3">
+                 <div className="w-1/2">
+                   <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Skor Atlet</label>
+                   <input type="number" value={evaluation.score} onChange={e => setEvaluation({...evaluation, score: Number(e.target.value)})} className={`w-full p-2 border rounded-xl text-center font-black ${t.text}`} />
+                 </div>
+                 <div className="w-1/2">
+                   <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Target Ideal</label>
+                   <input type="number" value={evaluation.target} onChange={e => setEvaluation({...evaluation, target: Number(e.target.value)})} className="w-full p-2 border rounded-xl text-center font-black text-slate-400" />
+                 </div>
                </div>
-               <div className={`p-3 rounded-xl text-center font-black text-white shadow-inner mb-3 ${calculateScore().barColor}`}>{calculateScore().percentage}% - {calculateScore().label}</div>
-               <div className="p-2 bg-slate-50 rounded-lg border border-slate-100 text-[8px] font-bold text-slate-500 italic">
-                 "Kalibrasi ulang tes biometrik hanya dilakukan pada akhir minggu Unloading (W4)."
-               </div>
-            </div>
-
-            <div className="border p-6 rounded-3xl bg-white shadow-sm border-orange-100 flex flex-col">
-               <h2 className="font-black uppercase flex items-center gap-2 mb-4 text-orange-600 tracking-tighter"><ClipboardList className="w-4 h-4"/> Gizi & Medis</h2>
-               <textarea value={nutritionNote} onChange={e => setNutritionNote(e.target.value)} className="w-full bg-orange-50/30 border-none p-4 rounded-2xl h-24 outline-none font-bold text-slate-600 leading-relaxed text-[10px]" placeholder="Ketik catatan gizi..." />
-            </div>
-
-            <div className="border p-6 rounded-3xl bg-white shadow-sm border-indigo-100 flex-1">
-               <h2 className="font-black uppercase flex items-center gap-2 mb-4 text-indigo-600 tracking-tighter"><Target className="w-4 h-4"/> Event & Lokasi</h2>
                
-               <div className="mb-4 space-y-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
-                 <div className="flex items-center justify-between">
-                   <span className="text-[9px] font-black text-red-600 uppercase">Target Utama</span>
-                   <select value={competitionMonth} onChange={handleCompMonthChange} className="text-[10px] font-black text-red-700 bg-white px-1 py-0.5 rounded border outline-none cursor-pointer">
-                     {activeMonths.map(m => <option key={m} value={m}>{m}</option>)}
-                   </select>
-                 </div>
-                 
-                 <div className="flex flex-col gap-1 border-t border-indigo-200 pt-2">
-                   <span className="text-[9px] font-black text-yellow-600 uppercase">Target Antara (Multi)</span>
-                   <div className="flex flex-wrap gap-1 mt-1">
-                     {activeMonths.map(m => {
-                       if (m === competitionMonth) return null;
-                       const isActive = secondaryPeaks.includes(m);
-                       return (
-                         <button key={`peak-${m}`} onClick={() => setSecondaryPeaks(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])}
-                           className={`px-2 py-0.5 rounded text-[9px] font-black border transition-all ${isActive ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-slate-400 border-slate-200 hover:border-yellow-400'}`}>
-                           {m}
-                         </button>
-                       )
-                     })}
-                   </div>
-                 </div>
-               </div>
+               <label className="flex items-center gap-2 cursor-pointer mb-3 justify-center bg-slate-50 p-2 rounded-xl border">
+                 <input type="checkbox" checked={evaluation.isTime} onChange={e => setEvaluation({...evaluation, isTime: e.target.checked})} className="w-3 h-3 cursor-pointer" style={{ accentColor: t.hex }} />
+                 <span className="text-[9px] font-black text-slate-500 uppercase">Mode Waktu/Kecepatan (Makin Kecil Makin Baik)</span>
+               </label>
 
-               <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                  {activeMonths.map(m => (
-                    <div key={m} className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${m === competitionMonth ? 'bg-red-50 border-red-200' : secondaryPeaks.includes(m) ? 'bg-yellow-50 border-yellow-200' : 'bg-slate-50 border-slate-100'}`}>
-                      <span className={`font-black w-8 text-[9px] ${m === competitionMonth ? 'text-red-600' : secondaryPeaks.includes(m) ? 'text-yellow-600' : 'text-slate-400'}`}>{m.toUpperCase()}</span>
-                      <input placeholder="Nama Event..." value={locations[m] || ''} onChange={e => setLocations({...locations, [m]: e.target.value})} className="bg-transparent outline-none w-full font-bold text-slate-600" />
-                      <button onClick={() => {if(m !== competitionMonth && !secondaryPeaks.includes(m)) setTryOutMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])}}><Flag className={`w-3 h-3 cursor-pointer ${tryOutMonths.includes(m) ? 'text-purple-600 fill-purple-600' : 'text-slate-200'}`} /></button>
-                    </div>
-                  ))}
-               </div>
+               <div className={`p-3 rounded-xl text-center font-black text-white shadow-inner ${calculateScore().barColor}`}>{calculateScore().percentage}% - {calculateScore().label}</div>
             </div>
-          </div>
 
-          {/* KALENDER PERIODISASI (TIMELINE MATERI FULL WIDTH) */}
-          <div className="col-span-4 border p-8 rounded-3xl bg-white shadow-sm relative border-slate-100 overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter text-sm ${t.textDark}`}>
-                <Calendar className={`w-5 h-5 ${t.text}`}/> Kalender Periodisasi (Timeline Materi Pelatihan)
-              </h2>
-            </div>
-            
-            <div className="overflow-x-auto pb-4 custom-scrollbar">
-              <table className="w-full border-collapse border min-w-[1000px]">
-                <thead>
-                  <tr>
-                    <th className="p-2 border bg-slate-50 min-w-[200px] sticky left-0 z-20 text-left text-[10px] text-slate-400 uppercase tracking-widest">Fase Pelatihan</th>
-                    {unifiedPhases.map((p, idx) => (
-                      <th key={`phase-${idx}`} colSpan={p.span * 4} className={`p-2 border text-[9px] font-black uppercase ${p.color} tracking-widest`}>
-                        {p.label}
-                      </th>
-                    ))}
-                  </tr>
-                  <tr>
-                    <th className="p-2 border bg-slate-50 sticky left-0 z-20 text-left text-[10px] text-slate-400 uppercase tracking-widest">Bulan</th>
-                    {activeMonths.map(m => (
-                      <th key={`m-${m}`} colSpan={4} className={`p-2 border font-black uppercase ${t.bgLight} ${t.textDark}`}>
-                        {m}
-                      </th>
-                    ))}
-                  </tr>
-                  <tr>
-                    <th className="p-2 border bg-slate-50 sticky left-0 z-20 flex justify-between items-center h-[34px]">
-                       <span className="text-[10px] text-slate-400 uppercase tracking-widest">Instrumen Latihan</span>
-                       <div className="flex gap-1">
-                         <input type="text" value={materialInput} onChange={e => setMaterialInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMaterial()} className="border p-1 rounded outline-none text-[9px] w-24 focus:ring-1" style={{ '--tw-ring-color': t.hex }} placeholder="+ Tambah..."/>
-                       </div>
-                    </th>
-                    {activeMonths.map(m => (
-                      <React.Fragment key={`w-${m}`}>
-                        <th className="p-1 border bg-slate-50 text-[9px] text-slate-500 w-8">W1</th>
-                        <th className="p-1 border bg-slate-50 text-[9px] text-slate-500 w-8">W2</th>
-                        <th className="p-1 border bg-slate-50 text-[9px] text-slate-500 w-8">W3</th>
-                        <th className="p-1 border bg-green-50 text-[9px] text-green-700 w-8" title="Unloading">W4(U)</th>
-                      </React.Fragment>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {materials.map(mat => (
-                    <tr key={mat} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-2 border bg-white sticky left-0 z-10 font-bold text-[10px] text-slate-700 truncate max-w-[200px]" title={mat}>{mat}</td>
-                      {activeMonths.map(m => [1,2,3,4].map(w => (
-                        <td key={`${m}-W${w}`} className={`p-1 border text-center ${w===4 ? 'bg-green-50/20' : ''}`}>
-                          <input type="checkbox" checked={!!matrixData[`${m}-W${w}-${mat}`]} onChange={() => setMatrixData(prev => ({...prev, [`${m}-W${w}-${mat}`]: !prev[`${m}-W${w}-${mat}`]}))} className="cursor-pointer w-3 h-3" style={{ accentColor: t.hex }} />
-                        </td>
-                      )))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* PSIKOLOGI */}
-          <div className="col-span-4 border p-8 rounded-3xl bg-slate-900 text-white shadow-inner">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-              <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className={`w-5 h-5 ${t.text}`}/> Asesmen Psikologi Bertarung</h2>
-              <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest italic">by fiqhipondaa9 system</span>
-            </div>
-            <div className="grid grid-cols-9 gap-4">
-               {mentalData.map((item, idx) => (
-                 <div key={item.id} className="space-y-2 text-center group">
-                   <input value={item.label} onChange={e => { 
-                      const newData = mentalData.map((m, i) => i === idx ? { ...m, label: e.target.value } : m);
-                      setMentalData(newData); 
-                   }} className="bg-transparent text-[8px] font-black text-slate-500 uppercase outline-none text-center focus:text-white transition-colors w-full" style={{ focusColor: t.hex }} />
-                   <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700 shadow-md transition-all" style={{ '--tw-border-opacity': 1, borderColor: item.score >= 8 ? t.hex : '#334155' }}>
-                     <input type="number" min="1" max="9" value={item.score} onChange={e => { 
-                        const newData = mentalData.map((m, i) => i === idx ? { ...m, score: Number(e.target.value) } : m);
-                        setMentalData(newData); 
-                     }} className="bg-transparent w-full text-center font-black text-xl outline-none" style={{ color: t.hex }} />
-                   </div>
-                 </div>
-               ))}
+            <div className="border p-6 rounded-3xl bg-white shadow-sm border-slate-200 flex flex-col flex-1">
+               <h2 className="font-black uppercase flex items-center gap-2 mb-3 text-orange-600 tracking-tighter"><ClipboardList className="w-4 h-4"/> Catatan Gizi & Medis</h2>
+               <textarea value={nutritionNote} onChange={e => setNutritionNote(e.target.value)} className="w-full bg-orange-50/30 border border-orange-100 p-4 rounded-2xl flex-1 outline-none font-bold text-slate-600 leading-relaxed text-[10px]" placeholder="Ketik catatan diet..." />
             </div>
           </div>
         </div>
 
-        {/* FOOTER */}
-        <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center opacity-40">
-           <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">Professional Annual Plan System | Designed by fiqhipondaa9</p>
-           <div className="flex gap-4 items-center">
-              <Globe className="w-3 h-3"/><select value={terminology} onChange={e => setTerminology(e.target.value)} className="bg-transparent font-black outline-none uppercase text-[8px] cursor-pointer"><option value="Eropa">Mazhab Eropa</option><option value="Amerika">Mazhab Amerika</option></select>
+        <div className="grid grid-cols-2 gap-8 px-6 no-print">
+           {/* MODUL BIOMOTORIK BOMPA */}
+           <div className="border p-6 rounded-3xl bg-slate-50/50 flex flex-col shadow-sm border-slate-200 h-80">
+             <div className="flex justify-between items-center mb-4">
+               <h2 className="font-black uppercase tracking-tighter flex items-center gap-2"><Dumbbell className="text-slate-600 w-4 h-4"/> Pemandu Biomotorik Spesifik</h2>
+             </div>
+             
+             {athleteInfo.age.includes('U13') && activeBiomotor === 'Strength' && (
+               <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-xl flex gap-2 items-start shadow-sm">
+                 <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"/>
+                 <p className="text-[9px] font-bold text-red-700 leading-tight">PERINGATAN LTAD BOMPA: Atlet U13 dilarang keras melakukan beban mekanik.</p>
+               </div>
+             )}
+
+             <div className="flex bg-white p-1 rounded-xl mb-4 border">
+               {['Strength', 'Endurance', 'Speed'].map(type => (
+                 <button key={type} onClick={() => setActiveBiomotor(type)} className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all ${activeBiomotor === type ? t.bg + ' text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>{type.toUpperCase()}</button>
+               ))}
+             </div>
+             <div className="space-y-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+               {biomotorData[activeBiomotor].map(p => (
+                 <div key={p.id} className="p-3 rounded-2xl border-2 transition-all bg-white border-slate-100 hover:border-slate-200">
+                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textDark}`}>{p.id}</p>
+                    <p className={`text-[9px] font-bold mb-0.5 ${t.text}`}>{p.param}</p>
+                    <p className="text-[8px] font-black text-orange-500 mb-1">{p.rest}</p>
+                    <p className="text-[8px] text-slate-500 italic">{p.desc}</p>
+                 </div>
+               ))}
+             </div>
+           </div>
+
+           {/* PSIKOLOGI */}
+           <div className="border p-8 rounded-3xl bg-slate-900 text-white shadow-inner h-80 flex flex-col">
+             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+               <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className={`w-5 h-5 ${t.text}`}/> Asesmen Psikologi Bertarung</h2>
+               <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest italic">by fiqhipondaa9 system</span>
+             </div>
+             <div className="grid grid-cols-3 gap-4 flex-1 content-start">
+                {mentalData.map((item, idx) => (
+                  <div key={item.id} className="space-y-2 text-center group flex flex-col items-center">
+                    <input value={item.label} onChange={e => { 
+                       const newData = mentalData.map((m, i) => i === idx ? { ...m, label: e.target.value } : m); setMentalData(newData); 
+                    }} className="bg-transparent text-[9px] font-black text-slate-400 uppercase outline-none text-center focus:text-white transition-colors w-full" />
+                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700 shadow-md transition-all w-24" style={{ '--tw-border-opacity': 1, borderColor: item.score >= 8 ? t.hex : '#334155' }}>
+                      <input type="number" min="1" max="9" value={item.score} onChange={e => { 
+                         const newData = mentalData.map((m, i) => i === idx ? { ...m, score: Number(e.target.value) } : m); setMentalData(newData); 
+                      }} className="bg-transparent w-full text-center font-black text-2xl outline-none" style={{ color: t.hex }} />
+                    </div>
+                  </div>
+                ))}
+             </div>
+           </div>
+        </div>
+
+        {/* FOOTER HAK CIPTA */}
+        <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center opacity-50 px-8 pb-4 print:mt-4 print:border-t-2 print:border-black">
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic print:text-black">ANNUAL TRAINING PLAN SYSTEM | Designed by fiqhipondaa9</p>
+           <div className="flex gap-4 items-center no-print">
+              <Globe className="w-3 h-3 text-slate-400"/><select value={terminology} onChange={e => setTerminology(e.target.value)} className="bg-transparent font-black outline-none uppercase text-[9px] cursor-pointer text-slate-400"><option value="Eropa">Mazhab Eropa</option><option value="Amerika">Mazhab Amerika</option></select>
            </div>
         </div>
       </div>
