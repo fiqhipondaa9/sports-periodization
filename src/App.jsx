@@ -562,14 +562,18 @@ const App = () => {
 
         {/* HEADER IDENTITAS PRINT */}
         <div className="p-8 pb-4 print:pt-4">
+           
+           {/* --- TAMBAHAN HEADER JUDUL UTAMA --- */}
+           <div className="mb-6 flex justify-between items-end border-b-2 border-slate-200 pb-4">
+              <div>
+                 <h1 className={`text-2xl font-black tracking-tighter uppercase ${t.textDark} print:text-3xl`}>ANNUAL TRAINING PLAN SYSTEM</h1>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Designed by fiqhipondaa9</p>
+              </div>
+           </div>
+           {/* ----------------------------------- */}
+
            <table className="text-[10px] font-black text-slate-700 uppercase print:text-[12px]">
              <tbody>
-               <tr><td className="w-32 pb-1">Cabang Olahraga</td><td className="w-4 pb-1">:</td><td className="pb-1">{athleteInfo.cabor}</td></tr>
-               <tr><td className="pb-1">Usia / Kategori</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.age}</td></tr>
-               <tr><td className="pb-1">Provinsi / Daerah</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.prov}</td></tr>
-               <tr><td className="pb-1">Pelatih</td><td className="pb-1">:</td><td className="pb-1">{athleteInfo.coach}</td></tr>
-               <tr><td className="pb-1 pt-2">Nama Atlet / Tim</td><td className="pb-1 pt-2">:</td><td className="pb-1 pt-2 text-sm text-blue-900 print:text-black">{athleteInfo.name}</td></tr>
-             </tbody>
            </table>
         </div>
 
