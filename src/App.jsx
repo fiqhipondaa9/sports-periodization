@@ -578,7 +578,7 @@ const App = () => {
 {/* =========================================
             AREA KHUSUS CETAK (PNG & PDF)
             ========================================= */}
-        <div ref={reportRef} className="bg-white pb-4 print:pb-0"></div>
+        <div ref={reportRef} className="bg-white pb-4 print:pb-0">
 
         {/* HEADER IDENTITAS PRINT */}
         <div className="p-8 pb-4 print:pt-4">
@@ -814,7 +814,7 @@ const App = () => {
             </table>
           </div>
         </div>
-        </div> {/* <-- PENUTUP AREA KHUSUS CETAK --> */}
+        </div> {/* <-- INI ADALAH PENUTUP DARI div ref={reportRef} DI ATAS */}
 
         {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
         <div className="grid grid-cols-2 gap-8 mb-8 no-print px-6 mt-8">
