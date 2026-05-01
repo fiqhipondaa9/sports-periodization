@@ -511,7 +511,7 @@ const App = () => {
           {/* FIX 1: PSIKOLOGI (Anti-Reset Memori) */}
           <div className="col-span-4 border p-8 rounded-3xl bg-slate-900 text-white shadow-inner">
             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-              <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className="w-5 h-5 text-purple-400"/> Asesmen Psikologi Bertarung</h2>
+              <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className="w-5 h-5 text-purple-400"/> Asesmen Psikologi</h2>
               <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest italic">by fiqhipondaa9 system</span>
             </div>
             <div className="grid grid-cols-9 gap-4">
