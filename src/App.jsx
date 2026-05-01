@@ -224,50 +224,52 @@ const App = () => {
   };
 
   const handleExportPNG = async () => {
-    const el = reportRef.current;
-    if (!el) return alert("Elemen tidak ditemukan!");
-
     try {
-      // 1. Simpan posisi scroll asli agar tidak mengagetkan user
-      const originalScrollY = window.scrollY;
-      window.scrollTo(0, 0);
+      const el = reportRef.current;
+      if (!el) return;
 
-      // 2. Beri jeda agar UI stabil
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // 1. Tangkap pembungkus tabel yang memiliki efek scroll
+      const scrollContainer = el.querySelector('.overflow-x-auto');
+      
+      // 2. Simpan wujud aslinya ke memori
+      const originalElStyle = el.getAttribute('style') || '';
+      const originalScrollClass = scrollContainer ? scrollContainer.className : '';
+      
+      // 3. BUKA GEMBOK: Lebarkan tabel secara paksa dan matikan efek scroll
+      el.style.width = '1400px'; 
+      el.style.overflow = 'visible';
+      
+      if (scrollContainer) {
+         scrollContainer.style.overflow = 'visible';
+         scrollContainer.classList.remove('overflow-x-auto'); // Hapus pembatas sementara
+      }
 
-      // 3. Konfigurasi pemotretan "Anti-Crop" & "Anti-Gagal"
-      const canvas = await html2canvas(el, {
-        scale: 1.5,               // Gunakan 1.5 agar memori tidak meledak di laptop RAM kecil
-        useCORS: true,            // Wajib untuk gambar QRIS
-        logging: false,
-        backgroundColor: "#ffffff",
-        // PAKSA: Mesin foto harus melihat lebar asli konten (bukan lebar layar laptop Coach)
-        width: el.scrollWidth,
-        height: el.scrollHeight,
-        windowWidth: el.scrollWidth,
-        onclone: (clonedDoc) => {
-           // Buka semua scrollbar di dalam hasil kloning foto
-           const scrolls = clonedDoc.querySelectorAll('.overflow-x-auto');
-           scrolls.forEach(s => {
-             s.style.overflow = 'visible';
-             s.style.display = 'block';
-           });
-        }
+      // 4. JEDA NAPAS: Beri waktu 1 detik agar Grafik selesai menyesuaikan lebarnya
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 5. JEPRET: Ambil gambar setelah semuanya terbuka sempurna
+      const canvas = await html2canvas(el, { 
+        scale: 2, // Resolusi tinggi
+        useCORS: true,
+        backgroundColor: "#ffffff"
       });
 
-      // 4. Eksekusi Unduh
-      const image = canvas.toDataURL("image/png", 1.0);
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `Periodisasi_Plan_${athleteInfo.name || 'Athlete'}.png`;
+      // 6. KUNCI KEMBALI: Kembalikan tampilan ke wujud aslinya
+      el.setAttribute('style', originalElStyle);
+      if (scrollContainer) {
+         scrollContainer.className = originalScrollClass;
+         scrollContainer.style.overflow = '';
+      }
+
+      // 7. UNDUH GAMBAR
+      const link = document.createElement('a'); 
+      link.href = canvas.toDataURL('image/png');
+      link.download = `Periodisasi_${athleteInfo.name}.png`; 
       link.click();
-      
-      // 5. Kembalikan posisi layar
-      window.scrollTo(0, originalScrollY);
 
     } catch (error) {
-      console.error("Detail Error:", error);
-      alert("PNG Gagal. Solusi: 1. Gunakan Google Chrome. 2. Jangan zoom-in/out browser saat menekan tombol. 3. Pastikan koneksi internet stabil.");
+      console.error("Error Cetak PNG:", error);
+      alert("Proses PNG gagal. Pesan error: " + error.message);
     }
   };
 
