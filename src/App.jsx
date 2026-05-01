@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, Zap, Brain, Apple, Dumbbell, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, PieChart as PieChartIcon, Table, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette } from 'lucide-react';
+import { Trophy, Zap, Brain, Apple, Dumbbell, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, PieChart as PieChartIcon, Table, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -20,7 +20,6 @@ const THEMES = {
   zinc: { id: 'zinc', name: 'Zinc', hex: '#52525b', bg: 'bg-zinc-600', text: 'text-zinc-600', textDark: 'text-zinc-900', bgLight: 'bg-zinc-50', borderLight: 'border-zinc-100', hoverBg: 'hover:bg-zinc-700', hoverLight: 'hover:bg-zinc-50' }
 };
 
-// DATA BIOMOTORIK BOMPA
 const biomotorData = {
   Strength: [
     { id: 'Adaptasi Anatomi', param: '40-60% 1RM | 12-20 Reps | 2-4 Set', rest: 'Rest: 30-120 Detik', desc: 'Modifikasi ketebalan jaringan ikat & fungsi ligamen.' },
@@ -53,17 +52,14 @@ const App = () => {
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // STATE TEMA WARNA
   const [activeTheme, setActiveTheme] = useState('blue');
   const t = THEMES[activeTheme];
 
-  // STATE IDENTITAS
-  const [athleteInfo, setAthleteInfo] = useState({ name: 'EDIT NAMA TIM/ATLET', target: 'EDIT TARGET', class: 'EDIT CABOR', age: 'Senior (>18 Tahun)', coach: 'Edit Coach' });
+  const [athleteInfo, setAthleteInfo] = useState({ name: 'KOTA PALU', target: 'JUARA UMUM', class: 'SEMUA CABOR', age: 'Senior (>18 Tahun)', coach: 'fiqhipondaa9' });
   const [startMonth, setStartMonth] = useState(0); 
   const [endMonth, setEndMonth] = useState(11); 
   const [terminology, setTerminology] = useState('Eropa');
   
-  // STATE PUNCAK KOMPETISI
   const [competitionMonth, setCompetitionMonth] = useState('Nov');
   const [secondaryPeaks, setSecondaryPeaks] = useState([]);
   
@@ -76,7 +72,6 @@ const App = () => {
   const [matrixData, setMatrixData] = useState({});
   
   const [microType, setMicroType] = useState('Developmental');
-  const [showMatrixModal, setShowMatrixModal] = useState(false);
   const [showDailyModal, setShowDailyModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState('Sen');
   const [dailySessions, setDailySessions] = useState(['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].reduce((acc, d) => ({ ...acc, [d]: { morning: { menu: '', int: 5 }, afternoon: { menu: '', int: 5 } } }), {}));
@@ -103,14 +98,19 @@ const App = () => {
 
   const getPhase = (m) => {
     if (m === competitionMonth || secondaryPeaks.includes(m)) {
-      return { label: terminology === 'Eropa' ? 'FASE KOMPETISI' : 'IN-SEASON', color: 'bg-red-600 text-white' };
+      return { label: terminology === 'Eropa' ? 'KOMPETISI UTAMA' : 'IN-SEASON', color: 'bg-red-600 text-white' };
     }
     const currIdx = months.indexOf(m);
     const compIdx1 = months.indexOf(competitionMonth);
     const maxSec = secondaryPeaks.length > 0 ? Math.max(...secondaryPeaks.map(x => months.indexOf(x))) : -1;
     const lastCompIdx = Math.max(compIdx1, maxSec);
 
-    if (currIdx < lastCompIdx) return { label: terminology === 'Eropa' ? 'FASE PERSIAPAN' : 'PRE-SEASON', color: `${t.bg} text-white` };
+    // Memisahkan Persiapan Umum & Khusus/Pra-Kompetisi secara dinamis
+    if (currIdx < lastCompIdx) {
+       const midPoint = Math.floor(lastCompIdx / 2);
+       if (currIdx < midPoint) return { label: terminology === 'Eropa' ? 'PERSIAPAN UMUM' : 'OFF-SEASON', color: `${t.bg} text-white` };
+       return { label: terminology === 'Eropa' ? 'PERSIAPAN KHUSUS' : 'PRE-SEASON', color: `${t.bgLight} ${t.textDark} border border-${t.text}` };
+    }
     return { label: 'TRANSISI', color: 'bg-slate-400 text-white' };
   };
 
@@ -197,52 +197,11 @@ const App = () => {
     XLSX.writeFile(wb, `Plan_${athleteInfo.name}.xlsx`);
   };
 
-  // FIX 3: INJEKSI CSS UNTUK PRINT PDF AGAR WARNA TIDAK LUNTUR
   const printStyles = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' };
 
   return (
     <div className="min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px]" style={printStyles}>
       
-      {/* MODAL MATRIKS */}
-      {showMatrixModal && (
-        <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border">
-            <div className={`p-4 text-white flex justify-between font-black uppercase ${t.bg}`}>
-              <span>Materi Latihan Mingguan (Hukum Bompa 3:1)</span><X className="cursor-pointer" onClick={() => setShowMatrixModal(false)}/>
-            </div>
-            <div className="p-4 overflow-auto flex-1">
-              <table className="w-full border-collapse border">
-                <thead>
-                  <tr className="bg-slate-100">
-                    <th className="p-2 border sticky left-0 z-10 bg-slate-100 min-w-[150px]">Materi</th>
-                    {activeMonths.map(m => (
-                      <React.Fragment key={`th-${m}`}>
-                        <th className={`p-2 border font-black uppercase ${t.bgLight} ${t.textDark}`}>W1</th>
-                        <th className={`p-2 border font-black uppercase ${t.bgLight} ${t.textDark}`}>W2</th>
-                        <th className={`p-2 border font-black uppercase ${t.bgLight} ${t.textDark}`}>W3</th>
-                        <th className="p-2 border bg-green-100 text-green-800 text-[9px]">W4<br/>Unload</th>
-                      </React.Fragment>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {materials.map(mat => (
-                    <tr key={mat}>
-                      <td className="p-2 border bg-white sticky left-0 z-10 font-bold">{mat}</td>
-                      {activeMonths.map(m => [1,2,3,4].map(w => (
-                        <td key={`${m}-W${w}`} className={`p-1 border text-center ${w===4 ? 'bg-green-50/30' : ''}`}>
-                          <input type="checkbox" checked={!!matrixData[`${m}-W${w}-${mat}`]} onChange={() => setMatrixData(prev => ({...prev, [`${m}-W${w}-${mat}`]: !prev[`${m}-W${w}-${mat}`]}))} className="cursor-pointer w-3 h-3" style={{ accentColor: t.hex }} />
-                        </td>
-                      )))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MODAL DAILY */}
       {showDailyModal && (
         <div className="fixed inset-0 z-[120] bg-slate-900/60 flex items-center justify-center p-4">
@@ -263,8 +222,6 @@ const App = () => {
 
       {/* TOOLBAR */}
       <div className="max-w-[1200px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-4 no-print">
-        
-        {/* THEME PICKER */}
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
           <Palette className="w-4 h-4 text-slate-400" />
           <div className="h-4 w-px bg-slate-200 mx-1"></div>
@@ -324,11 +281,11 @@ const App = () => {
         </div>
 
         <div className="grid grid-cols-4 gap-8">
-          {/* MAKROSIKLUS */}
+          {/* MAKROSIKLUS (COLS 1-3) */}
           <div className="col-span-3 space-y-8">
             <div className="border p-8 rounded-3xl bg-white shadow-sm relative border-slate-100">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Zap className="text-orange-500 w-5 h-5"/> Grafik Beban Makro siklus</h2>
+                <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Zap className="text-orange-500 w-5 h-5"/> Grafik Beban Makrosiklus</h2>
                 <div className="flex gap-4">
                   <div className="flex items-center gap-1"><div className="w-3 h-1 bg-red-500 rounded-full"/><span className="text-[8px] font-black text-slate-400 uppercase">Intensitas</span></div>
                   <div className="flex items-center gap-1"><div className="w-3 h-1 rounded-full" style={{backgroundColor: t.hex}}/><span className="text-[8px] font-black text-slate-400 uppercase">Volume</span></div>
@@ -350,7 +307,6 @@ const App = () => {
                     <RechartsTooltip/>
                     {tryOutMonths.map(m => activeMonths.includes(m) && <ReferenceLine key={m} x={m} stroke="#9333ea" strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: locations[m] || 'TO', fill: '#9333ea', fontSize: 8, fontWeight: 'bold' }} />)}
                     
-                    {/* FIX 2: POSISI LABEL TARGET DIPISAHKAN AGAR TIDAK TUMPANG TINDIH */}
                     <ReferenceLine x={competitionMonth} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'insideTopRight', value: 'TARGET UTAMA', fill: '#ef4444', fontSize: 9, fontWeight: 'bold' }} />
                     
                     {secondaryPeaks.map(sp => (
@@ -376,9 +332,9 @@ const App = () => {
                 ))}
               </div>
             </div>
-
+            
+            {/* ROW 2 KIRI: BIOMOTORIK & MICROCYCLE */}
             <div className="grid grid-cols-2 gap-8">
-              {/* MODUL BIOMOTORIK */}
               <div className="border p-6 rounded-3xl bg-slate-50/50 flex flex-col h-full shadow-sm">
                 <h2 className="font-black uppercase tracking-tighter flex items-center gap-2 mb-4"><Dumbbell className="text-slate-600 w-4 h-4"/> Fase Biomotorik Spesifik</h2>
                 
@@ -406,12 +362,10 @@ const App = () => {
                 </div>
               </div>
 
-              {/* SIKLUS MIKRO */}
               <div className="border p-6 rounded-3xl bg-white shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter ${t.textDark}`}><BarChart2 className="w-4 h-4"/> Siklus Mikro</h2>
-                    <button onClick={() => setShowMatrixModal(true)} className="bg-slate-900 text-white px-3 py-1 rounded-xl font-black text-[8px] uppercase tracking-widest shadow-md hover:bg-slate-800 transition-colors">Matriks</button>
+                    <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter ${t.textDark}`}><BarChart2 className="w-4 h-4"/> Siklus Mikro (Daily)</h2>
                   </div>
                   
                   <div className="mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100">
@@ -435,20 +389,12 @@ const App = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex gap-2 pt-4 border-t">
-                    <input type="text" value={materialInput} onChange={e => setMaterialInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMaterial()} className="flex-1 border p-2 rounded-xl outline-none" style={{ focusRingColor: t.hex }} placeholder="Tambah materi (Tekan Enter)..."/>
-                    <button onClick={handleAddMaterial} className={`text-white p-2 rounded-xl transition-colors ${t.bg} ${t.hoverBg}`}><Plus/></button>
-                  </div>
-                </div>
-                <div className="mt-4 p-2 bg-green-50 rounded-xl border border-green-100 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-green-600"/>
-                  <span className="text-[8px] font-bold text-green-700">Hukum Step Loading 3:1 Diterapkan. Wajib Unloading di Minggu ke-4.</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* SIDEBAR */}
+          {/* SIDEBAR (COL 4) */}
           <div className="space-y-8">
             <div className={`border p-6 rounded-3xl bg-white shadow-sm ${t.borderLight}`}>
                <h2 className={`font-black uppercase flex items-center gap-2 mb-4 ${t.text}`}><Trophy className="w-4 h-4"/> Evaluasi Fisik 1RM</h2>
@@ -508,10 +454,70 @@ const App = () => {
             </div>
           </div>
 
-          {/* FIX 1: PSIKOLOGI (Anti-Reset Memori) */}
+          {/* KALENDER PERIODISASI (TIMELINE MATERI FULL WIDTH) */}
+          <div className="col-span-4 border p-8 rounded-3xl bg-white shadow-sm relative border-slate-100 overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter text-sm ${t.textDark}`}>
+                <Calendar className={`w-5 h-5 ${t.text}`}/> Kalender Periodisasi (Timeline Materi Pelatihan)
+              </h2>
+            </div>
+            
+            <div className="overflow-x-auto pb-4 custom-scrollbar">
+              <table className="w-full border-collapse border min-w-[1000px]">
+                <thead>
+                  <tr>
+                    <th className="p-2 border bg-slate-50 min-w-[200px] sticky left-0 z-20 text-left text-[10px] text-slate-400 uppercase tracking-widest">Fase Pelatihan</th>
+                    {unifiedPhases.map((p, idx) => (
+                      <th key={`phase-${idx}`} colSpan={p.span * 4} className={`p-2 border text-[9px] font-black uppercase ${p.color} tracking-widest`}>
+                        {p.label}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr>
+                    <th className="p-2 border bg-slate-50 sticky left-0 z-20 text-left text-[10px] text-slate-400 uppercase tracking-widest">Bulan</th>
+                    {activeMonths.map(m => (
+                      <th key={`m-${m}`} colSpan={4} className={`p-2 border font-black uppercase ${t.bgLight} ${t.textDark}`}>
+                        {m}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr>
+                    <th className="p-2 border bg-slate-50 sticky left-0 z-20 flex justify-between items-center h-[34px]">
+                       <span className="text-[10px] text-slate-400 uppercase tracking-widest">Instrumen Latihan</span>
+                       <div className="flex gap-1">
+                         <input type="text" value={materialInput} onChange={e => setMaterialInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMaterial()} className="border p-1 rounded outline-none text-[9px] w-24 focus:ring-1" style={{ '--tw-ring-color': t.hex }} placeholder="+ Tambah..."/>
+                       </div>
+                    </th>
+                    {activeMonths.map(m => (
+                      <React.Fragment key={`w-${m}`}>
+                        <th className="p-1 border bg-slate-50 text-[9px] text-slate-500 w-8">W1</th>
+                        <th className="p-1 border bg-slate-50 text-[9px] text-slate-500 w-8">W2</th>
+                        <th className="p-1 border bg-slate-50 text-[9px] text-slate-500 w-8">W3</th>
+                        <th className="p-1 border bg-green-50 text-[9px] text-green-700 w-8" title="Unloading">W4(U)</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {materials.map(mat => (
+                    <tr key={mat} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-2 border bg-white sticky left-0 z-10 font-bold text-[10px] text-slate-700 truncate max-w-[200px]" title={mat}>{mat}</td>
+                      {activeMonths.map(m => [1,2,3,4].map(w => (
+                        <td key={`${m}-W${w}`} className={`p-1 border text-center ${w===4 ? 'bg-green-50/20' : ''}`}>
+                          <input type="checkbox" checked={!!matrixData[`${m}-W${w}-${mat}`]} onChange={() => setMatrixData(prev => ({...prev, [`${m}-W${w}-${mat}`]: !prev[`${m}-W${w}-${mat}`]}))} className="cursor-pointer w-3 h-3" style={{ accentColor: t.hex }} />
+                        </td>
+                      )))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* PSIKOLOGI */}
           <div className="col-span-4 border p-8 rounded-3xl bg-slate-900 text-white shadow-inner">
             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-              <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className="w-5 h-5 text-purple-400"/> Asesmen Psikologi</h2>
+              <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className={`w-5 h-5 ${t.text}`}/> Asesmen Psikologi Bertarung</h2>
               <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest italic">by fiqhipondaa9 system</span>
             </div>
             <div className="grid grid-cols-9 gap-4">
@@ -520,12 +526,12 @@ const App = () => {
                    <input value={item.label} onChange={e => { 
                       const newData = mentalData.map((m, i) => i === idx ? { ...m, label: e.target.value } : m);
                       setMentalData(newData); 
-                   }} className="bg-transparent text-[8px] font-black text-slate-500 uppercase outline-none text-center focus:text-purple-400 transition-colors w-full" />
-                   <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700 shadow-md group-hover:border-purple-500/50 transition-all">
+                   }} className="bg-transparent text-[8px] font-black text-slate-500 uppercase outline-none text-center focus:text-white transition-colors w-full" style={{ focusColor: t.hex }} />
+                   <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700 shadow-md transition-all" style={{ '--tw-border-opacity': 1, borderColor: item.score >= 8 ? t.hex : '#334155' }}>
                      <input type="number" min="1" max="9" value={item.score} onChange={e => { 
                         const newData = mentalData.map((m, i) => i === idx ? { ...m, score: Number(e.target.value) } : m);
                         setMentalData(newData); 
-                     }} className="bg-transparent w-full text-center font-black text-xl text-purple-400 outline-none" />
+                     }} className="bg-transparent w-full text-center font-black text-xl outline-none" style={{ color: t.hex }} />
                    </div>
                  </div>
                ))}
