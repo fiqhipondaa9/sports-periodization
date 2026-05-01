@@ -225,46 +225,42 @@ const App = () => {
 
   const handleExportPNG = async () => {
     try {
+      // 1. Reset posisi layar ke atas (Wajib untuk html2canvas)
       window.scrollTo(0, 0);
       const el = reportRef.current;
-      
+      if (!el) return;
+
+      // 2. Simpan ukuran asli
       const originalWidth = el.style.width;
       const originalMaxWidth = el.style.maxWidth;
-      const parentOverflow = el.parentElement.style.overflow;
-      
-      el.parentElement.style.overflow = 'visible';
 
-      const scrollContainers = el.querySelectorAll('.overflow-x-auto');
-      const originalStyles = [];
-      scrollContainers.forEach((container) => {
-        originalStyles.push({ overflowX: container.style.overflowX, overflow: container.style.overflow });
-        container.style.overflowX = 'visible';
-        container.style.overflow = 'visible';
-      });
-
+      // 3. Paksa lebar 1300px agar tabel memanjang (tidak terpotong di layar kecil)
       el.style.width = '1300px'; 
       el.style.maxWidth = 'none';
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 4. Beri jeda 800ms agar grafik Recharts selesai merentang sempurna
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, windowWidth: 1300 });
-
-      el.style.width = originalWidth;
-      el.style.maxWidth = originalMaxWidth;
-      el.parentElement.style.overflow = parentOverflow;
-      
-      scrollContainers.forEach((container, i) => {
-        container.style.overflowX = originalStyles[i].overflowX;
-        container.style.overflow = originalStyles[i].overflow;
+      // 5. Eksekusi pemotretan
+      const canvas = await html2canvas(el, { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: 1300 
       });
 
+      // 6. Kembalikan ukuran layar ke semula
+      el.style.width = originalWidth;
+      el.style.maxWidth = originalMaxWidth;
+
+      // 7. Unduh file
       const link = document.createElement('a'); 
-      link.href = canvas.toDataURL('image/png');
-      link.download = `Periodisasi_${athleteInfo.name}.png`; 
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.download = `Plan_${athleteInfo.name}.png`; 
       link.click();
     } catch (error) {
-      console.error("Error Cetak PNG:", error);
-      alert("Proses PNG gagal! Memori mesin mungkin penuh. Coba muat ulang (Refresh) halaman atau gunakan PDF.");
+      alert("PNG Gagal. Coba muat ulang halaman atau gunakan browser Chrome/Edge.");
     }
   };
 
@@ -371,7 +367,7 @@ const App = () => {
       </style>
 
       {/* FLOATING ACTION BUTTONS */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50 no-print">
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50 print:hidden">
          <button onClick={() => setShowQrisModal(true)} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 p-3 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110" title="Traktir Kopi Coach">
             <Coffee className="w-6 h-6" />
          </button>
@@ -418,7 +414,7 @@ const App = () => {
       )}
 
       {/* TOOLBAR */}
-      <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-6 no-print">
+      <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden">
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
           <Palette className="w-4 h-4 text-slate-400" />
           <div className="h-4 w-px bg-slate-200 mx-1"></div>
@@ -441,7 +437,7 @@ const App = () => {
         {/* ==========================================
             PANEL KENDALI: 8 LANGKAH WIZARD
             ========================================== */}
-        <div className="bg-slate-50 border-b border-slate-200 p-6 no-print">
+        <div className="bg-slate-50 border-b border-slate-200 p-6 print:hidden">
            <h2 className="font-black text-sm uppercase text-slate-800 mb-4 flex items-center gap-2"><Target className={`w-5 h-5 ${t.text}`}/> Control Panel: SOP Pembuatan Periodisasi</h2>
            
            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
@@ -814,10 +810,10 @@ const App = () => {
             </table>
           </div>
         </div>
-        </div> {/* <-- INI ADALAH PENUTUP DARI div ref={reportRef} DI ATAS */}
+        </div> {/* <-- PENUTUP reportRef DI SINI */}
 
         {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
-        <div className="grid grid-cols-2 gap-8 mb-8 no-print px-6 mt-8">
+        <div className="grid grid-cols-2 gap-8 mb-8 print:hidden px-6 mt-8">
           <div className="border p-6 rounded-3xl bg-white shadow-sm flex flex-col justify-between border-slate-200">
             <div>
               <div className="flex justify-between items-center mb-4">
