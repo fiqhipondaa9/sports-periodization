@@ -228,37 +228,46 @@ const App = () => {
     if (!el) return alert("Elemen tidak ditemukan!");
 
     try {
-      // 1. Scroll ke paling atas agar koordinat foto tidak geser
+      // 1. Simpan posisi scroll asli agar tidak mengagetkan user
+      const originalScrollY = window.scrollY;
       window.scrollTo(0, 0);
 
-      // 2. Beri jeda 1 detik (Wajib agar grafik Recharts berhenti bergerak/stabil)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 2. Beri jeda agar UI stabil
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 3. Ambil dimensi asli konten
-      const actualWidth = el.scrollWidth;
-      const actualHeight = el.scrollHeight;
-
-      // 4. Eksekusi pemotretan dengan opsi presisi tinggi
+      // 3. Konfigurasi pemotretan "Anti-Crop" & "Anti-Gagal"
       const canvas = await html2canvas(el, {
-        scale: 2,                // Resolusi jernih
-        useCORS: true,           // Agar gambar QRIS/Ikon masuk
-        allowTaint: true,
+        scale: 1.5,               // Gunakan 1.5 agar memori tidak meledak di laptop RAM kecil
+        useCORS: true,            // Wajib untuk gambar QRIS
+        logging: false,
         backgroundColor: "#ffffff",
-        width: actualWidth,      // Kunci lebar sesuai konten asli
-        height: actualHeight,    // Kunci tinggi sesuai konten asli
-        windowWidth: actualWidth // Hindari pemotongan layar (Anti-Crop)
+        // PAKSA: Mesin foto harus melihat lebar asli konten (bukan lebar layar laptop Coach)
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        windowWidth: el.scrollWidth,
+        onclone: (clonedDoc) => {
+           // Buka semua scrollbar di dalam hasil kloning foto
+           const scrolls = clonedDoc.querySelectorAll('.overflow-x-auto');
+           scrolls.forEach(s => {
+             s.style.overflow = 'visible';
+             s.style.display = 'block';
+           });
+        }
       });
 
-      // 5. Proses Unduh
+      // 4. Eksekusi Unduh
       const image = canvas.toDataURL("image/png", 1.0);
       const link = document.createElement('a');
       link.href = image;
       link.download = `Periodisasi_Plan_${athleteInfo.name || 'Athlete'}.png`;
       link.click();
+      
+      // 5. Kembalikan posisi layar
+      window.scrollTo(0, originalScrollY);
 
     } catch (error) {
-      console.error("Error Detail:", error);
-      alert("PNG Gagal: Coba gunakan browser Chrome atau pastikan tab tidak dalam mode penyamaran (Incognito).");
+      console.error("Detail Error:", error);
+      alert("PNG Gagal. Solusi: 1. Gunakan Google Chrome. 2. Jangan zoom-in/out browser saat menekan tombol. 3. Pastikan koneksi internet stabil.");
     }
   };
 
