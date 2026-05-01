@@ -224,43 +224,41 @@ const App = () => {
   };
 
   const handleExportPNG = async () => {
+    const el = reportRef.current;
+    if (!el) return alert("Elemen tidak ditemukan!");
+
     try {
-      // 1. Reset posisi layar ke atas (Wajib untuk html2canvas)
+      // 1. Scroll ke paling atas agar koordinat foto tidak geser
       window.scrollTo(0, 0);
-      const el = reportRef.current;
-      if (!el) return;
 
-      // 2. Simpan ukuran asli
-      const originalWidth = el.style.width;
-      const originalMaxWidth = el.style.maxWidth;
+      // 2. Beri jeda 1 detik (Wajib agar grafik Recharts berhenti bergerak/stabil)
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // 3. Paksa lebar 1300px agar tabel memanjang (tidak terpotong di layar kecil)
-      el.style.width = '1300px'; 
-      el.style.maxWidth = 'none';
+      // 3. Ambil dimensi asli konten
+      const actualWidth = el.scrollWidth;
+      const actualHeight = el.scrollHeight;
 
-      // 4. Beri jeda 800ms agar grafik Recharts selesai merentang sempurna
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // 5. Eksekusi pemotretan
-      const canvas = await html2canvas(el, { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
+      // 4. Eksekusi pemotretan dengan opsi presisi tinggi
+      const canvas = await html2canvas(el, {
+        scale: 2,                // Resolusi jernih
+        useCORS: true,           // Agar gambar QRIS/Ikon masuk
+        allowTaint: true,
         backgroundColor: "#ffffff",
-        windowWidth: 1300 
+        width: actualWidth,      // Kunci lebar sesuai konten asli
+        height: actualHeight,    // Kunci tinggi sesuai konten asli
+        windowWidth: actualWidth // Hindari pemotongan layar (Anti-Crop)
       });
 
-      // 6. Kembalikan ukuran layar ke semula
-      el.style.width = originalWidth;
-      el.style.maxWidth = originalMaxWidth;
-
-      // 7. Unduh file
-      const link = document.createElement('a'); 
-      link.href = canvas.toDataURL('image/png', 1.0);
-      link.download = `Plan_${athleteInfo.name}.png`; 
+      // 5. Proses Unduh
+      const image = canvas.toDataURL("image/png", 1.0);
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `Periodisasi_Plan_${athleteInfo.name || 'Athlete'}.png`;
       link.click();
+
     } catch (error) {
-      alert("PNG Gagal. Coba muat ulang halaman atau gunakan browser Chrome/Edge.");
+      console.error("Error Detail:", error);
+      alert("PNG Gagal: Coba gunakan browser Chrome atau pastikan tab tidak dalam mode penyamaran (Incognito).");
     }
   };
 
