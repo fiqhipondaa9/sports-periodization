@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -228,43 +228,38 @@ const App = () => {
       const el = reportRef.current;
       if (!el) return;
 
-      // 1. Tangkap pembungkus tabel yang memiliki efek scroll
+      // 1. Simpan wujud asli
       const scrollContainer = el.querySelector('.overflow-x-auto');
-      
-      // 2. Simpan wujud aslinya ke memori
-      const originalElStyle = el.getAttribute('style') || '';
       const originalScrollClass = scrollContainer ? scrollContainer.className : '';
+      const originalElWidth = el.style.width;
       
-      // 3. BUKA GEMBOK: Lebarkan tabel secara paksa dan matikan efek scroll
+      // 2. Lebarkan paksa agar tabel tidak terpotong (Anti-Crop)
       el.style.width = '1400px'; 
-      el.style.overflow = 'visible';
-      
       if (scrollContainer) {
          scrollContainer.style.overflow = 'visible';
-         scrollContainer.classList.remove('overflow-x-auto'); // Hapus pembatas sementara
+         scrollContainer.classList.remove('overflow-x-auto');
       }
 
-      // 4. JEDA NAPAS: Beri waktu 1 detik agar Grafik selesai menyesuaikan lebarnya
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 3. Jeda untuk render grafik Recharts
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 5. JEPRET: Ambil gambar setelah semuanya terbuka sempurna
-      const canvas = await html2canvas(el, { 
-        scale: 2, // Resolusi tinggi
-        useCORS: true,
-        backgroundColor: "#ffffff"
+      // 4. JEPRET DENGAN MESIN MODERN (Kebal OKLCH)
+      const dataUrl = await toPng(el, { 
+        backgroundColor: "#ffffff",
+        pixelRatio: 2 // Resolusi tinggi agar hasil cetak tajam
       });
 
-      // 6. KUNCI KEMBALI: Kembalikan tampilan ke wujud aslinya
-      el.setAttribute('style', originalElStyle);
+      // 5. Kembalikan tampilan ke normal
+      el.style.width = originalElWidth;
       if (scrollContainer) {
          scrollContainer.className = originalScrollClass;
          scrollContainer.style.overflow = '';
       }
 
-      // 7. UNDUH GAMBAR
+      // 6. Unduh File
       const link = document.createElement('a'); 
-      link.href = canvas.toDataURL('image/png');
-      link.download = `Periodisasi_${athleteInfo.name}.png`; 
+      link.href = dataUrl;
+      link.download = `Periodisasi_${athleteInfo.name || 'Plan'}.png`; 
       link.click();
 
     } catch (error) {
