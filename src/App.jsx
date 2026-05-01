@@ -54,7 +54,7 @@ const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
 
 const App = () => {
   const WA_NUMBER = "6285340804702";
-  const QRIS_LINK = "https://drive.google.com/uc?export=view&id=19rNaq96lXmgMBTkCZyyuHqP7HYhoW4MN";
+  const QRIS_LINK = "/shareqrdana.png";
   
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -363,7 +363,7 @@ const App = () => {
             <div className="bg-blue-600 p-6 text-white">
                <Coffee className="w-10 h-10 mx-auto mb-2 opacity-80" />
                <h2 className="font-black text-lg">Dukung Pengembangan!</h2>
-               <p className="text-[10px] opacity-80">Traktir kopi untuk update fitur selanjutnya.</p>
+               <p className="text-[10px] opacity-80">Traktir kopi jika anda terbantu oleh aplikasi ini.</p>
             </div>
             <div className="p-6 flex flex-col items-center">
                <img src={QRIS_LINK} alt="QRIS DANA" className="w-48 h-48 object-cover rounded-2xl shadow-md border mb-4" onError={(e) => e.target.src = "https://via.placeholder.com/200?text=QRIS+Image+Error"}/>
