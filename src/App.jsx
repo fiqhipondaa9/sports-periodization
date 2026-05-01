@@ -67,12 +67,12 @@ const App = () => {
   
   // FIX: Semua Identitas dikumpulkan di sini
   const [athleteInfo, setAthleteInfo] = useState({ 
-    cabor: 'SOFTBALL', 
-    name: 'TIM PUTRI DKI JAKARTA', 
-    age: 'SENIOR', 
-    prov: 'DKI JAKARTA', 
-    coach: 'FIQHIPONDAA9',
-    target: 'JUARA UMUM PON'
+    cabor: 'edit', 
+    name: 'edit', 
+    age: 'edit', 
+    prov: 'edit', 
+    coach: 'edit',
+    target: 'edit'
   });
   
   const [startMonth, setStartMonth] = useState(0); 
