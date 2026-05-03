@@ -3,6 +3,7 @@ import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as Rech
 import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
+import qrisImage from './assets/shareqrdana.png';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const LOCKED_COMPONENTS = ['Endurance', 'Strength', 'Speed', 'Fleksibilitas', 'Teknik Dasar', 'Teknik Lanjutan', 'Mental / Psikologis'];
@@ -54,7 +55,7 @@ const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
 
 const App = () => {
   const WA_NUMBER = "6285340804702";
-  const QRIS_LINK = "/qris-dana.png"; // Link File Lokal
+  const QRIS_LINK = qrisImage; // Link File Lokal
   
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
