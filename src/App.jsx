@@ -3,7 +3,7 @@ import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as Rech
 import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
-import qrisImage from './assets/shareqrdana.png';
+import qrisImage from './assets/shareqr.png';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const LOCKED_COMPONENTS = ['Endurance', 'Strength', 'Speed', 'Fleksibilitas', 'Teknik Dasar', 'Teknik Lanjutan', 'Mental / Psikologis'];
@@ -54,9 +54,6 @@ const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
 );
 
 const App = () => {
-  const WA_NUMBER = "6285340804702";
-  const QRIS_LINK = qrisImage; // Link File Lokal
-  
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -95,7 +92,7 @@ const App = () => {
   
   const [microType, setMicroType] = useState('Developmental');
   const [showDailyModal, setShowDailyModal] = useState(false);
-  const [showQrisModal, setShowQrisModal] = useState(false);
+  const [showCoffeeModal, setShowCoffeeModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState('Sen');
   const [dailySessions, setDailySessions] = useState(['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].reduce((acc, d) => ({ ...acc, [d]: { morning: { menu: '', int: 5 }, afternoon: { menu: '', int: 5 } } }), {}));
   
@@ -109,6 +106,8 @@ const App = () => {
   const [terminology, setTerminology] = useState('Eropa');
   const [nutritionNote, setNutritionNote] = useState('Input catatan gizi, suplemen, atau berat badan di sini.');
 
+  const [isProjectorMode, setIsProjectorMode] = useState(false);
+
   const calculatedEndYear = startMonth <= endMonth ? startYear : startYear + 1;
 
   const activeMonths = useMemo(() => {
@@ -117,6 +116,18 @@ const App = () => {
   }, [startMonth, endMonth]);
 
   const allMaterials = useMemo(() => Array.from(new Set([...LOCKED_COMPONENTS, ...materials])), [materials]);
+
+  // --- TIMER APRESIASI & KONSULTASI WA (33 MENIT) ---
+  useEffect(() => {
+    const apresiasiTimer = setInterval(() => {
+      // Pastikan modal hanya muncul jika tidak sedang presentasi layar penuh
+      if (!isProjectorMode) {
+        setShowCoffeeModal(true);
+      }
+    }, 33 * 60 * 1000); // 33 Menit = 1.980.000 ms
+
+    return () => clearInterval(apresiasiTimer);
+  }, [isProjectorMode]);
 
   useEffect(() => {
     if (!activeMonths.includes(competitionMonth)) setCompetitionMonth(activeMonths[activeMonths.length - 1]);
@@ -358,44 +369,47 @@ const App = () => {
     XLSX.writeFile(wb, `Program_${athleteInfo.name}.xlsx`);
   };
 
-  const handleWA = () => {
-    window.open(`https://wa.me/${WA_NUMBER}?text=Halo%20Coach%20Fiqhi,%20saya%20pengguna%20Aplikasi%20Periodisasi%20Bompa.%20Saya%20sangat%20terbantu!`, '_blank');
-  };
-
   const printStyles = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px] print:p-0 print:bg-white" style={printStyles}>
+    <div className={`min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px] print:p-0 print:bg-white`} style={printStyles}>
       
       <style type="text/css">
         {`@media print { @page { size: landscape; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}
       </style>
 
-      {/* FLOATING ACTION BUTTONS */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50 print:hidden">
-         <button onClick={() => setShowQrisModal(true)} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 p-3 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110" title="Traktir Kopi Coach">
+      {/* --- FAB KONSULTASI & APRESIASI --- */}
+      {!isProjectorMode && (
+        <button 
+          onClick={() => setShowCoffeeModal(true)} 
+          className="print:hidden fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white h-14 rounded-full shadow-2xl z-50 flex items-center justify-center px-4 gap-0 hover:gap-3 transition-all duration-300 border-4 border-blue-100 group overflow-hidden"
+          title="Konsultasi & Apresiasi"
+        >
+          <div className="relative flex items-center justify-center">
             <Coffee className="w-6 h-6" />
-         </button>
-         <button onClick={handleWA} className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110" title="Lapor Bug / Chat WA">
-            <MessageCircle className="w-6 h-6" />
-         </button>
-      </div>
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+          </div>
+          <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-500 ease-in-out whitespace-nowrap font-black text-xs uppercase tracking-widest">
+            Konsultasi WA
+          </span>
+        </button>
+      )}
 
-      {/* QRIS MODAL */}
-      {showQrisModal && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 no-print">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden text-center relative">
-            <button onClick={() => setShowQrisModal(false)} className="absolute top-4 right-4 bg-slate-100 p-2 rounded-full hover:bg-slate-200 text-slate-600"><X className="w-4 h-4"/></button>
-            <div className="bg-blue-600 p-6 text-white">
-               <Coffee className="w-10 h-10 mx-auto mb-2 opacity-80" />
-               <h2 className="font-black text-lg">Dukung Pengembangan!</h2>
-               <p className="text-[10px] opacity-80">Traktir kopi untuk update fitur selanjutnya.</p>
+      {/* COFFEE MODAL UNIFIED */}
+      {showCoffeeModal && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300 no-print">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden text-center relative p-8">
+            <button onClick={() => setShowCoffeeModal(false)} className="absolute top-4 right-4 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 p-2 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
+            <div className="bg-amber-100 text-amber-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><Coffee className="w-8 h-8" /></div>
+            <h3 className="text-xl font-black text-slate-800 mb-2">Traktir Kopi Developer</h3>
+            <p className="text-xs font-bold text-slate-500 mb-6 leading-relaxed normal-case">Terima kasih telah menggunakan aplikasi ini! Dukungan Anda sangat berarti bagi pengembangan fitur selanjutnya.</p>
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6 flex justify-center">
+                <img src={qrisImage} alt="QRIS DANA" className="max-w-[200px] h-auto rounded-xl shadow-sm border border-slate-200" />
             </div>
-            <div className="p-6 flex flex-col items-center">
-               <img src={QRIS_LINK} alt="QRIS DANA" className="w-48 h-48 object-cover rounded-2xl shadow-md border mb-4" onError={(e) => e.target.src = "https://via.placeholder.com/200?text=QRIS+Image+Error"}/>
-               <p className="text-[10px] font-bold text-slate-500">Scan via aplikasi DANA atau M-Banking Anda.</p>
-               <p className="text-[12px] font-black text-blue-900 mt-2">by fiqhipondaa9</p>
-            </div>
+            <a href="https://wa.me/6285340804702?text=Halo%20Developer,%20saya%20ingin%20konsultasi%20mengenai%20Aplikasi%20Periodisasi%20Bompa..." target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-md transition-colors w-full flex items-center justify-center gap-2 text-sm uppercase tracking-widest">
+                Konsultasi WhatsApp
+            </a>
           </div>
         </div>
       )}
