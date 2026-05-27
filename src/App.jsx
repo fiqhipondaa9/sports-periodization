@@ -63,14 +63,17 @@ const App = () => {
 
   const [startYear, setStartYear] = useState(new Date().getFullYear());
   
-  // FIX: Semua Identitas dikumpulkan di sini
+  // FIX: Semua Identitas dikumpulkan di sini (Updated with Load Metrics)
   const [athleteInfo, setAthleteInfo] = useState({ 
     cabor: 'edit', 
     name: 'edit', 
     age: 'edit', 
     prov: 'edit', 
     coach: 'edit',
-    target: 'edit'
+    target: 'edit',
+    maxDuration: 300,   // Default batas atas durasi mingguan (menit)
+    benchPress1RM: 100, // Basis hitungan tonase upper body (kg)
+    squat1RM: 100       // Basis hitungan tonase lower body (kg)
   });
   
   const [startMonth, setStartMonth] = useState(0); 
@@ -416,18 +419,83 @@ const App = () => {
 
       {/* MODAL DAILY */}
       {showDailyModal && (
-        <div className="fixed inset-0 z-[120] bg-slate-900/60 flex items-center justify-center p-4 no-print">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border">
-            <div className="p-4 bg-slate-900 text-white font-black uppercase flex justify-between"><span>SESI HARIAN: {selectedDay}</span><X className="cursor-pointer" onClick={() => setShowDailyModal(false)}/></div>
-            <div className="p-6 space-y-4">
-              {['morning', 'afternoon'].map(session => (
-                <div key={session}>
-                  <label className="font-black text-[9px] text-slate-400 uppercase mb-1 block">{session === 'morning' ? 'Sesi Pagi' : 'Sesi Sore'}</label>
-                  <textarea value={dailySessions[selectedDay][session].menu} onChange={e => setDailySessions({...dailySessions, [selectedDay]: {...dailySessions[selectedDay], [session]: {...dailySessions[selectedDay][session], menu: e.target.value}}})} className="w-full border p-2 rounded-xl h-16 outline-none text-[10px] focus:ring-1 focus:ring-opacity-50" style={{ '--tw-ring-color': t.hex }} placeholder="Ketik menu..." />
-                </div>
-              ))}
+        <div className="fixed inset-0 z-[120] bg-slate-900/60 flex items-center justify-center p-4 print:hidden">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 bg-slate-900 text-white font-black uppercase flex justify-between items-center">
+              <span className="tracking-wider">SESI HARIAN: {selectedDay}</span>
+              <X className="cursor-pointer hover:scale-110 transition-transform w-5 h-5 text-slate-400 hover:text-white" onClick={() => setShowDailyModal(false)}/>
             </div>
-            <div className="p-4 flex justify-center"><button onClick={() => setShowDailyModal(false)} className={`text-white px-8 py-2 rounded-xl font-black ${t.bg} ${t.hoverBg}`}>SIMPAN</button></div>
+            
+            <div className="p-6 space-y-5">
+              {['morning', 'afternoon'].map(session => {
+                const currentIntensitas = dailySessions[selectedDay][session].int || 5;
+                // Rumus konversi otomatis sports science berbasis data 1RM di Langkah 1
+                const bpTarget = Math.round((currentIntensitas / 10) * (athleteInfo.benchPress1RM || 100));
+                const squatTarget = Math.round((currentIntensitas / 10) * (athleteInfo.squat1RM || 100));
+
+                return (
+                  <div key={session} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="font-black text-[10px] text-slate-500 uppercase tracking-wide">
+                        {session === 'morning' ? '☀️ Sesi Pagi' : '🌙 Sesi Sore'}
+                      </label>
+                      <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded-lg border shadow-sm text-[9px] font-black">
+                        <span className="text-red-500">Intensitas: {currentIntensitas}/10</span>
+                      </div>
+                    </div>
+
+                    {/* SLIDER INTENSITAS HARIAN (Siklus Mikro Wave Planner) */}
+                    <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-inner">
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="10" 
+                        value={currentIntensitas} 
+                        onChange={e => setDailySessions({
+                          ...dailySessions, 
+                          [selectedDay]: {
+                            ...dailySessions[selectedDay], 
+                            [session]: { ...dailySessions[selectedDay][session], int: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-current text-blue-600"
+                        style={{ color: t.hex }}
+                      />
+                    </div>
+
+                    {/* BAR PANDUAN SPORTS SCIENCE INSTAN UNTUK ASISTEN */}
+                    <div className="grid grid-cols-2 gap-1.5 text-[8px] font-black uppercase text-center">
+                      <div className="bg-amber-50 text-amber-700 p-1 rounded-md border border-amber-100 truncate">
+                        🏋️‍♂️ BP/Upper: {bpTarget} kg
+                      </div>
+                      <div className="bg-amber-100 text-amber-900 p-1 rounded-md border border-amber-200 truncate">
+                        🦵 SQ/Lower: {squatTarget} kg
+                      </div>
+                    </div>
+
+                    <textarea 
+                      value={dailySessions[selectedDay][session].menu} 
+                      onChange={e => setDailySessions({
+                        ...dailySessions, 
+                        [selectedDay]: {
+                          ...dailySessions[selectedDay], 
+                          [session]: { ...dailySessions[selectedDay][session], menu: e.target.value }
+                        }
+                      })} 
+                      className="w-full border p-2.5 rounded-xl h-16 outline-none text-[10px] font-bold text-slate-700 bg-white focus:ring-1 focus:ring-opacity-50 shadow-sm transition-all" 
+                      style={{ '--tw-ring-color': t.hex }} 
+                      placeholder="Contoh: 4 Set x 8 Reps Squat..." 
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="p-4 bg-slate-50 border-t flex justify-center">
+              <button onClick={() => setShowDailyModal(false)} className={`text-white px-10 py-2.5 rounded-xl font-black text-xs tracking-widest uppercase transition-all shadow-md hover:shadow-lg ${t.bg} ${t.hoverBg}`}>
+                SIMPAN MENU LATIHAN
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -454,17 +522,24 @@ const App = () => {
       <div className="max-w-[1300px] mx-auto bg-white rounded-3xl border shadow-lg relative overflow-hidden print:max-w-none print:border-none print:shadow-none print:rounded-none">
         
         {/* ==========================================
-            PANEL KENDALI: 8 LANGKAH WIZARD
+            PANEL KENDALI: 7 LANGKAH WIZARD
             ========================================== */}
         <div className="bg-slate-50 border-b border-slate-200 p-6 print:hidden">
            <h2 className="font-black text-sm uppercase text-slate-800 mb-4 flex items-center gap-2"><Target className={`w-5 h-5 ${t.text}`}/> Control Panel: SOP Pembuatan Periodisasi</h2>
            
            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
-             {[1,2,3,4,5,6,7,8].map(step => (
-               <button key={step} onClick={() => setActiveStep(step)} className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl border text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${activeStep === step ? `${t.bg} text-white shadow-md border-transparent` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
-                 {activeStep > step ? <CheckCircle2 className="w-3 h-3"/> : `Langkah ${step}`}
-               </button>
-             ))}
+             {[1,2,3,4,5,6,7].map(step => {
+               let stepName = `Langkah ${step}`;
+               if (step === 5) stepName = "5. Beban & Peaking";
+               if (step === 6) stepName = "6. Proporsi Faktor";
+               if (step === 7) stepName = "7. Evaluasi Akhir";
+
+               return (
+                 <button key={step} onClick={() => setActiveStep(step)} className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl border text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${activeStep === step ? `${t.bg} text-white shadow-md border-transparent` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+                   {activeStep > step ? <CheckCircle2 className="w-3 h-3"/> : stepName}
+                 </button>
+               );
+             })}
            </div>
 
            <div className="bg-white p-5 rounded-2xl border shadow-sm min-h-[160px] flex flex-col justify-between">
@@ -481,6 +556,22 @@ const App = () => {
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA PELATIH</label><input value={athleteInfo.coach} onChange={e => setAthleteInfo({...athleteInfo, coach: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Nama Pelatih Utama"/></div>
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET TAHUNAN</label><input value={athleteInfo.target} onChange={e => setAthleteInfo({...athleteInfo, target: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: JUARA PON"/></div>
                  </div>
+
+                 {/* --- PARAMETER SPORTS SCIENCE PARAM (DURASI & 1RM ATLAS) --- */}
+                 <div className="grid grid-cols-3 gap-4 border-t pt-4 mb-4 bg-slate-50 p-4 rounded-xl border">
+                    <div>
+                      <label className="block text-[9px] font-black text-blue-700 mb-1">DURASI MAKSIMAL MINGGUAN (MENIT)</label>
+                      <input type="number" value={athleteInfo.maxDuration || 300} onChange={e => setAthleteInfo({...athleteInfo, maxDuration: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-blue-600" placeholder="Contoh: 300"/>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-amber-700 mb-1">1RM BENCH PRESS / UPPER BODY (KG)</label>
+                      <input type="number" value={athleteInfo.benchPress1RM || 100} onChange={e => setAthleteInfo({...athleteInfo, benchPress1RM: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-amber-600" placeholder="Contoh: 100"/>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-amber-700 mb-1">1RM SQUAT / LOWER BODY (KG)</label>
+                      <input type="number" value={athleteInfo.squat1RM || 100} onChange={e => setAthleteInfo({...athleteInfo, squat1RM: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-amber-600" placeholder="Cont Contoh: 100"/>
+                    </div>
+                  </div>
 
                  <div className="grid grid-cols-3 gap-4 border-t pt-4">
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TAHUN MULAI</label><input type="number" value={startYear} onChange={e => setStartYear(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" title="Tahun Mulai"/></div>
@@ -544,26 +635,47 @@ const App = () => {
                  </div>
                </div>
              )}
-             {(activeStep === 5 || activeStep === 6) && (
-               <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">5 & 6. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
-                 <p className="text-[9px] font-bold text-slate-500 mb-3">Silakan atur angka parameter beban untuk setiap bulan secara manual. Grafik akan otomatis menyesuaikan.</p>
-                 <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                   {activeMonths.map(m => (
-                     <div key={m} className="min-w-[70px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
-                       <span className="text-[9px] font-black uppercase block mb-1">{m}</span>
-                       <input type="number" value={macroValues[m]?.vol} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], vol:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black text-blue-600 p-1" title="Volume"/>
-                       <input type="number" value={macroValues[m]?.int} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], int:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black text-red-600 p-1" title="Intensitas"/>
-                       <input type="number" min="1" max="5" value={macroValues[m]?.peak} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], peak:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black text-orange-500 p-1" title="Peaking (1-5)"/>
-                     </div>
-                   ))}
+             {activeStep === 5 && (
+                 <div className="animate-in fade-in slide-in-from-bottom-2">
+                   <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">5. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
+                   <p className="text-[9px] font-bold text-slate-500 mb-3">Silakan atur angka parameter beban untuk setiap bulan secara manual. Sistem akan otomatis mengonversi ke target durasi dan beban latihan nyata.</p>
+                   <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                     {activeMonths.map(m => {
+                      const computedMinutes = Math.round(((macroValues[m]?.vol || 50) / 100) * (athleteInfo.maxDuration || 300));
+                      const computedBP = Math.round(((macroValues[m]?.int || 50) / 100) * (athleteInfo.benchPress1RM || 100));
+                      const computedSquat = Math.round(((macroValues[m]?.int || 50) / 100) * (athleteInfo.squat1RM || 100));
+
+                      return (
+                        <div key={m} className="min-w-[105px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
+                          <span className="text-[9px] font-black uppercase block mb-1 border-b pb-0.5">{m}</span>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[8px] font-bold text-slate-400">Vol</span>
+                            <input type="number" value={macroValues[m]?.vol} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], vol:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-blue-600 p-0.5" title="Volume"/>
+                          </div>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[8px] font-bold text-slate-400">Int</span>
+                            <input type="number" value={macroValues[m]?.int} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], int:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-red-600 p-0.5" title="Intensitas"/>
+                          </div>
+                          <div className="flex items-center justify-between gap-1 pb-1">
+                            <span className="text-[8px] font-bold text-slate-400">Peak</span>
+                            <input type="number" min="1" max="5" value={macroValues[m]?.peak} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], peak:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-orange-500 p-0.5" title="Peaking (1-5)"/>
+                          </div>
+                          {/* OUTPUT METRIKS NYATA */}
+                          <div className="border-t pt-1 space-y-0.5 text-left bg-white p-1 rounded border border-slate-100 text-[8px] font-black">
+                            <div className="text-blue-700 truncate" title="Target Durasi Mingguan">⏱️ {computedMinutes} m/w</div>
+                            <div className="text-amber-700 truncate" title="Target Tonase Upper Body">🏋️‍♂️ BP: {computedBP}kg</div>
+                            <div className="text-amber-900 truncate" title="Target Tonase Lower Body">🦵 SQ: {computedSquat}kg</div>
+                          </div>
+                        </div>
+                      );
+                     })}
+                   </div>
+                   <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(6)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
                  </div>
-                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(7)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
-               </div>
-             )}
-             {activeStep === 7 && (
+               )}
+             {activeStep === 6 && (
                <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">7. Proporsi Faktor Latihan (%)</h3>
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">6. Proporsi Faktor Latihan (%)</h3>
                  <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                    {activeMonths.map(m => (
                      <div key={`fac-${m}`} className="min-w-[100px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
@@ -575,13 +687,13 @@ const App = () => {
                      </div>
                    ))}
                  </div>
-                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(8)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
+                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(7)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
                </div>
              )}
-             {activeStep === 8 && (
+             {activeStep === 7 && (
                <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col justify-center items-center h-full gap-4 text-center py-4">
                  <div>
-                   <h3 className="font-black text-sm text-slate-800 uppercase mb-2">8. Matriks Kalender Siap Dievaluasi</h3>
+                   <h3 className="font-black text-sm text-slate-800 uppercase mb-2">7. Matriks Kalender Siap Dievaluasi</h3>
                    <p className="text-[10px] font-bold text-slate-500 max-w-md mx-auto">Semua variabel telah diatur. Langkah terakhir adalah menceklis jadwal tes pada matriks kalender, dan mengisi catatan gizi serta menu harian di panel bawah.</p>
                  </div>
                  <button onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} className={`px-8 py-3 text-white font-black text-[11px] rounded-xl uppercase flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ${t.bg} ${t.hoverBg}`}>Gulir ke Bawah Untuk Lihat Matriks <ArrowRight className="w-4 h-4"/></button>
