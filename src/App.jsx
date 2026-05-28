@@ -80,8 +80,13 @@ const App = () => {
   const [endMonth, setEndMonth] = useState(11); 
   const [phaseProps, setPhaseProps] = useState({ prep: 50, comp: 50, transWeeks: 4 });
   const [competitionMonth, setCompetitionMonth] = useState('Okt');
-  const [tryOutMonths, setTryOutMonths] = useState([]);
-  const [tryInMonths, setTryInMonths] = useState([]);
+  const [tryOutWeeks, setTryOutWeeks] = useState({});
+  const [tryInWeeks, setTryInWeeks] = useState({});
+
+  // INDIKATOR PENYELAMAT SIKLUS: Mencegah Error "not defined" yang Mengakibatkan Layar Putih
+  const tryOutMonths = useMemo(() => [], []);
+  const tryInMonths = useMemo(() => [], []);
+
   const [locations, setLocations] = useState({});
   const [monthlyObjectives, setMonthlyObjectives] = useState(months.reduce((acc, m) => ({ ...acc, [m]: '' }), {}));
 
@@ -213,8 +218,11 @@ const App = () => {
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
         if(d.phaseProps) setPhaseProps(d.phaseProps);
         if(d.competitionMonth) setCompetitionMonth(d.competitionMonth);
-        if(d.tryOutMonths) setTryOutMonths(d.tryOutMonths);
-        if(d.tryInMonths) setTryInMonths(d.tryInMonths);
+        
+        // SINKRONISASI DATABASE DATA MINGGU SPESIFIK TERBARU
+        if(d.tryOutWeeks) setTryOutWeeks(d.tryOutWeeks);
+        if(d.tryInWeeks) setTryInWeeks(d.tryInWeeks);
+        
         if(d.locations) setLocations(d.locations);
         if(d.monthlyObjectives) setMonthlyObjectives(d.monthlyObjectives);
         if(d.macroValues) setMacroValues(d.macroValues);
@@ -233,7 +241,32 @@ const App = () => {
   };
 
   const handleSaveData = () => {
-    const data = { activeTheme, startYear, athleteInfo, startMonth, endMonth, phaseProps, competitionMonth, tryOutMonths, tryInMonths, locations, monthlyObjectives, macroValues, trainingFactors, matrixData, testSchedule, materials, dailySessions, nutritionNote, evaluation, mentalData };
+    const data = { 
+      activeTheme, 
+      startYear, 
+      athleteInfo, 
+      startMonth, 
+      endMonth, 
+      phaseProps, 
+      competitionMonth, 
+      
+      // BUNGKUS MAP OBJECT MINGGUAN KE DALAM FILE DOKUMEN
+      tryOutWeeks, 
+      tryInWeeks, 
+      
+      locations, 
+      monthlyObjectives, 
+      macroValues, 
+      trainingFactors, 
+      matrixData, 
+      testSchedule, 
+      materials, 
+      dailySessions, 
+      nutritionNote, 
+      evaluation, 
+      mentalData 
+    };
+    
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Periodisasi_${athleteInfo.name}.json`; a.click();
   };
@@ -293,8 +326,20 @@ const App = () => {
     let bulanRow = ['Bulan']; activeMonths.forEach(m => { bulanRow.push(m, '', '', ''); }); aoa.push(bulanRow);
     let mingguRow = ['Minggu']; activeMonths.forEach((m, mIdx) => [1,2,3,4].forEach(w => mingguRow.push((mIdx*4)+w))); aoa.push(mingguRow);
     
-    let toRow = ['Try Out']; activeMonths.forEach(m => [1,2,3,4].forEach(w => toRow.push(tryOutMonths.includes(m) ? 'TO' : ''))); aoa.push(toRow);
-    let tiRow = ['Try In']; activeMonths.forEach(m => [1,2,3,4].forEach(w => tiRow.push(tryInMonths.includes(m) ? 'TI' : ''))); aoa.push(tiRow);
+    // PERBAIKAN ERROR LAYAR PUTIH: MENGGUNAKAN FORMAT MAP MINGGUAN BARU
+    let toRow = ['Try Out']; 
+    activeMonths.forEach(m => [1,2,3,4].forEach(w => {
+        const key = `${m}-W${w}`;
+        toRow.push(tryOutWeeks && tryOutWeeks[key] ? 'TO' : '');
+    })); 
+    aoa.push(toRow);
+
+    let tiRow = ['Try In']; 
+    activeMonths.forEach(m => [1,2,3,4].forEach(w => {
+        const key = `${m}-W${w}`;
+        tiRow.push(tryInWeeks && tryInWeeks[key] ? 'TI' : '');
+    })); 
+    aoa.push(tiRow);
     
     let locRow = ['Waktu/Lokasi']; activeMonths.forEach(m => { locRow.push(locations[m] || '', '', '', ''); }); aoa.push(locRow);
     let faseRow = ['Fase']; activeMonths.forEach(m => { faseRow.push(getPhaseData(m).phase, '', '', ''); }); aoa.push(faseRow);
@@ -594,21 +639,60 @@ const App = () => {
              )}
              {activeStep === 3 && (
                <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">3. Penentuan Peaking & Uji Coba</h3>
+                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">3. Penentuan Peaking & Uji Coba (Spesifik Minggu)</h3>
                  <div className="grid grid-cols-3 gap-6">
                    <div>
                      <label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET KOMPETISI UTAMA (PEAK)</label>
                      <select value={competitionMonth} onChange={e => setCompetitionMonth(e.target.value)} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase text-red-600 cursor-pointer">{activeMonths.map(m=><option key={m} value={m}>{m}</option>)}</select>
                    </div>
-                   <div className="col-span-2 flex gap-4">
-                     <div className="flex-1 bg-purple-50 p-2 rounded-xl border border-purple-100">
-                       <label className="block text-[9px] font-black text-purple-700 mb-1">TRY OUT (TANDANG)</label>
-                       <div className="flex flex-wrap gap-1">{activeMonths.map(m => (<button key={`to-${m}`} onClick={()=>setTryOutMonths(prev=>prev.includes(m)?prev.filter(x=>x!==m):[...prev,m])} className={`px-2 py-1 text-[8px] font-black rounded transition-colors ${tryOutMonths.includes(m)?'bg-purple-600 text-white':'bg-white text-slate-400 border hover:border-purple-300'}`}>{m}</button>))}</div>
+                   <div className="col-span-2 flex flex-col gap-3">
+                     
+                     {/* TRY OUT GRIDS */}
+                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100">
+                       <label className="block text-[9px] font-black text-purple-700 mb-2 uppercase tracking-wider">✈️ Try Out / Laga Tandang (Pilih Minggu Spesifik)</label>
+                       <div className="grid grid-cols-4 gap-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                         {activeMonths.map(m => (
+                           <div key={`to-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center">
+                             <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
+                             <div className="flex justify-center gap-0.5">
+                               {[1, 2, 3, 4].map(w => {
+                                 const key = `${m}-W${w}`;
+                                 const isChecked = !!tryOutWeeks[key];
+                                 return (
+                                   <button key={`to-btn-${key}`} onClick={() => setTryOutWeeks(p => ({ ...p, [key]: !p[key] }))} className={`w-5 h-5 text-[8px] font-black rounded transition-all ${isChecked ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>
+                                     W{w}
+                                   </button>
+                                 );
+                               })}
+                             </div>
+                           </div>
+                         ))}
+                       </div>
                      </div>
-                     <div className="flex-1 bg-orange-50 p-2 rounded-xl border border-orange-100">
-                       <label className="block text-[9px] font-black text-orange-700 mb-1">TRY IN (KANDANG)</label>
-                       <div className="flex flex-wrap gap-1">{activeMonths.map(m => (<button key={`ti-${m}`} onClick={()=>setTryInMonths(prev=>prev.includes(m)?prev.filter(x=>x!==m):[...prev,m])} className={`px-2 py-1 text-[8px] font-black rounded transition-colors ${tryInMonths.includes(m)?'bg-orange-500 text-white':'bg-white text-slate-400 border hover:border-orange-300'}`}>{m}</button>))}</div>
+
+                     {/* TRY IN GRIDS */}
+                     <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                       <label className="block text-[9px] font-black text-orange-700 mb-2 uppercase tracking-wider">🏠 Try In / Laga Internal (Pilih Minggu Spesifik)</label>
+                       <div className="grid grid-cols-4 gap-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                         {activeMonths.map(m => (
+                           <div key={`ti-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center">
+                             <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
+                             <div className="flex justify-center gap-0.5">
+                               {[1, 2, 3, 4].map(w => {
+                                 const key = `${m}-W${w}`;
+                                 const isChecked = !!tryInWeeks[key];
+                                 return (
+                                   <button key={`ti-btn-${key}`} onClick={() => setTryInWeeks(p => ({ ...p, [key]: !p[key] }))} className={`w-5 h-5 text-[8px] font-black rounded transition-all ${isChecked ? 'bg-orange-500 text-white shadow-sm' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>
+                                     W{w}
+                                   </button>
+                                 );
+                               })}
+                             </div>
+                           </div>
+                         ))}
+                       </div>
                      </div>
+
                    </div>
                  </div>
                  <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(4)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
@@ -764,13 +848,29 @@ const App = () => {
                     return <th key={`aw-${m}-${w}`} className="p-1 border-b border-r bg-yellow-100 text-center text-[8px] font-black text-yellow-900 w-8 print:bg-transparent print:border print:text-black">{absWeek}</th>
                   }))}
                 </tr>
-                {/* TRY OUT & TRY IN */}
-                <tr>
-                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-purple-700 uppercase print:static print:text-black">Try Out</th>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
-                    <th key={`to-${m}-${w}`} className={`p-1 border-b border-r text-center ${tryOutMonths.includes(m) ? 'bg-purple-500 print:bg-gray-400' : 'bg-white'}`}></th>
-                  )))}
-                </tr>
+                {/* TRY OUT & TRY IN (MINGGU SPESIFIK) */}
+                                <tr>
+                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-purple-700 uppercase print:static print:text-black">Try Out</th>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
+                    const key = `${m}-W${w}`;
+                    return (
+                      <th key={`to-${m}-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black ${tryOutWeeks[key] ? 'bg-purple-500 text-white print:bg-gray-400' : 'bg-white'}`}>
+                        {tryOutWeeks[key] ? 'TO' : ''}
+                      </th>
+                    );
+                  }))}
+                </tr>
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-orange-600 uppercase print:static print:text-black">Try In</th>
+                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
+                    const key = `${m}-W${w}`;
+                    return (
+                      <th key={`ti-${m}-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black ${tryInWeeks[key] ? 'bg-orange-400 text-white print:bg-gray-300' : 'bg-white'}`}>
+                        {tryInWeeks[key] ? 'TI' : ''}
+                      </th>
+                    );
+                  }))}
+                </tr>
                 <tr>
                   <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-orange-600 uppercase print:static print:text-black">Try In</th>
                   {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
