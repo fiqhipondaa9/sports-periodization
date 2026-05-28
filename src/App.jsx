@@ -4,6 +4,7 @@ import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save,
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
+import NutritionPanel from "./NutritionPanel";
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import qrisImage from './assets/shareqr.png';
@@ -1038,10 +1039,9 @@ const App = () => {
                <div className={`p-3 rounded-xl text-center font-black text-white shadow-inner ${calculateScore().barColor}`}>{calculateScore().percentage}% - {calculateScore().label}</div>
             </div>
 
-            <div className="border p-6 rounded-3xl bg-white shadow-sm border-slate-200 flex flex-col flex-1">
-               <h2 className="font-black uppercase flex items-center gap-2 mb-3 text-orange-600 tracking-tighter"><ClipboardList className="w-4 h-4"/> Catatan Gizi & Medis</h2>
-               <textarea value={nutritionNote} onChange={e => setNutritionNote(e.target.value)} className="w-full bg-orange-50/30 border border-orange-100 p-4 rounded-2xl flex-1 outline-none font-bold text-slate-600 leading-relaxed text-[10px]" placeholder="Ketik catatan diet..." />
-            </div>
+            {/* SUB-KOMPONEN: CATATAN GIZI & MEDIS */}
+<NutritionPanel nutritionNote={nutritionNote} setNutritionNote={setNutritionNote} />
+
           </div>
         </div>
         <div className="grid grid-cols-2 gap-8 px-6 print:hidden">
