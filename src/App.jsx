@@ -63,7 +63,6 @@ const App = () => {
 
   const [startYear, setStartYear] = useState(new Date().getFullYear());
   
-  // FIX: Semua Identitas dikumpulkan di sini (Updated with Load Metrics)
   const [athleteInfo, setAthleteInfo] = useState({ 
     cabor: 'edit', 
     name: 'edit', 
@@ -71,15 +70,17 @@ const App = () => {
     prov: 'edit', 
     coach: 'edit',
     target: 'edit',
-    maxDuration: 300,   // Default batas atas durasi mingguan (menit)
-    benchPress1RM: 100, // Basis hitungan tonase upper body (kg)
-    squat1RM: 100       // Basis hitungan tonase lower body (kg)
+    maxDuration: 300, 
+    benchPress1RM: 100,
+    squat1RM: 100
   });
   
   const [startMonth, setStartMonth] = useState(0); 
   const [endMonth, setEndMonth] = useState(11); 
   const [phaseProps, setPhaseProps] = useState({ prep: 50, comp: 50, transWeeks: 4 });
-  const [competitionMonth, setCompetitionMonth] = useState('Okt');
+  
+  // NEW: State Target Berbasis Multi-Minggu (Bisa >1 Minggu)
+  const [competitionWeeks, setCompetitionWeeks] = useState(['Okt-W4']); 
   const [tryOutWeeks, setTryOutWeeks] = useState({});
   const [tryInWeeks, setTryInWeeks] = useState({});
 
@@ -124,32 +125,53 @@ const App = () => {
   }, [startMonth, endMonth]);
 
   const allMaterials = useMemo(() => Array.from(new Set([...LOCKED_COMPONENTS, ...materials])), [materials]);
+  
+  // PEMETAAN MINGGU KESELURUHAN (Master Week Array)
+  const allWeeks = useMemo(() => activeMonths.flatMap(m => [1,2,3,4].map(w => `${m}-W${w}`)), [activeMonths]);
 
-  // --- TIMER APRESIASI & KONSULTASI WA (33 MENIT) ---
   useEffect(() => {
     const apresiasiTimer = setInterval(() => {
-      // Pastikan modal hanya muncul jika tidak sedang presentasi layar penuh
       if (!isProjectorMode) {
         setShowCoffeeModal(true);
       }
-    }, 33 * 60 * 1000); // 33 Menit = 1.980.000 ms
+    }, 33 * 60 * 1000); 
 
     return () => clearInterval(apresiasiTimer);
   }, [isProjectorMode]);
 
+  // VALIDASI BOUNDARY MINGGU KOMPETISI
   useEffect(() => {
-    if (!activeMonths.includes(competitionMonth)) setCompetitionMonth(activeMonths[activeMonths.length - 1]);
-  }, [activeMonths, competitionMonth]);
+    const validWeeks = competitionWeeks.filter(w => allWeeks.includes(w));
+    if (validWeeks.length !== competitionWeeks.length && allWeeks.length > 0) {
+       setCompetitionWeeks(validWeeks.length > 0 ? validWeeks : [allWeeks[allWeeks.length - 1]]);
+    }
+  }, [allWeeks, competitionWeeks]);
 
-  const getPhaseData = (m) => {
-    const currIdx = activeMonths.indexOf(m);
-    const compIdx = activeMonths.indexOf(competitionMonth);
+  // ENGINE BARU: BACKWARD PLANNING BERBASIS MULTI-MINGGU (SPORTS SCIENCE)
+  const getPhaseDataWeek = (weekKey) => {
+    const currIdx = allWeeks.indexOf(weekKey);
+    
+    // Cari index dari semua Peak Week yang dicentang
+    const peakIndices = competitionWeeks.map(w => allWeeks.indexOf(w)).filter(i => i !== -1).sort((a,b) => a-b);
+    const firstPeakIdx = peakIndices.length > 0 ? peakIndices[0] : -1;
+    const lastPeakIdx = peakIndices.length > 0 ? peakIndices[peakIndices.length - 1] : -1;
 
-    if (m === competitionMonth) return { phase: 'KOMPETISI', subPhase: 'KOMPETISI UTAMA', color: 'bg-red-600 text-white', subColor: 'bg-pink-600 text-white' };
-    if (currIdx > compIdx) return { phase: 'TRANSISI', subPhase: 'PEMULIHAN AKTIF', color: 'bg-slate-500 text-white', subColor: 'bg-slate-400 text-white' };
-    if (currIdx === compIdx - 1) return { phase: 'KOMPETISI', subPhase: 'PRA KOMPETISI', color: 'bg-purple-600 text-white', subColor: 'bg-purple-400 text-white' };
+    if (currIdx === -1 || firstPeakIdx === -1) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN UMUM', color: `${t.bg} text-white`, subColor: `${t.bgLight} ${t.textDark}` };
 
-    const prepLength = (compIdx - 1); 
+    // Jika minggu ini adalah SAAT PEAK berlangsung
+    if (competitionWeeks.includes(weekKey)) return { phase: 'KOMPETISI', subPhase: 'KOMPETISI UTAMA', color: 'bg-red-600 text-white', subColor: 'bg-pink-600 text-white' };
+    
+    // Jika melewati Peak TERAKHIR -> Langsung Transisi / Pemulihan
+    if (currIdx > lastPeakIdx) return { phase: 'TRANSISI', subPhase: 'PEMULIHAN AKTIF', color: 'bg-slate-500 text-white', subColor: 'bg-slate-400 text-white' };
+
+    // Jika berada di Jeda antara Peak 1 dan Peak 2 (Maintenance)
+    if (currIdx > firstPeakIdx && currIdx < lastPeakIdx) return { phase: 'KOMPETISI', subPhase: 'MAINTENANCE', color: 'bg-red-500 text-white', subColor: 'bg-pink-500 text-white' };
+
+    // Pra Kompetisi (4 minggu sebelum Peak PERTAMA)
+    if (currIdx >= firstPeakIdx - 4 && currIdx < firstPeakIdx) return { phase: 'KOMPETISI', subPhase: 'PRA KOMPETISI', color: 'bg-purple-600 text-white', subColor: 'bg-purple-400 text-white' };
+
+    // Perhitungan Mundur Persiapan (Backward Planning)
+    const prepLength = (firstPeakIdx - 4); 
     if (prepLength <= 0) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN KHUSUS', color: `${t.bg} text-white`, subColor: 'bg-yellow-500 text-yellow-900' };
 
     const generalPrepLength = Math.ceil(prepLength * (phaseProps.prep / 100));
@@ -160,21 +182,26 @@ const App = () => {
 
   const unifiedPhases = useMemo(() => {
     const phases = []; let current = null;
-    activeMonths.forEach(m => {
-      const p = getPhaseData(m);
+    allWeeks.forEach(w => {
+      const p = getPhaseDataWeek(w);
       if (!current || current.phase !== p.phase) { current = { phase: p.phase, color: p.color, span: 1 }; phases.push(current); } else { current.span += 1; }
     }); return phases;
-  }, [activeMonths, competitionMonth, phaseProps, activeTheme]);
+  }, [allWeeks, competitionWeeks, phaseProps, activeTheme]);
 
   const unifiedSubPhases = useMemo(() => {
     const subPhases = []; let current = null;
-    activeMonths.forEach(m => {
-      const p = getPhaseData(m);
+    allWeeks.forEach(w => {
+      const p = getPhaseDataWeek(w);
       if (!current || current.subPhase !== p.subPhase) { current = { subPhase: p.subPhase, color: p.subColor, span: 1 }; subPhases.push(current); } else { current.span += 1; }
     }); return subPhases;
-  }, [activeMonths, competitionMonth, phaseProps, activeTheme]);
+  }, [allWeeks, competitionWeeks, phaseProps, activeTheme]);
 
   const chartData = useMemo(() => activeMonths.map(m => ({ name: m, Intensitas: macroValues[m]?.int || 0, Volume: macroValues[m]?.vol || 0, Peak: macroValues[m]?.peak || 0 })), [activeMonths, macroValues]);
+  
+  // Ekstrak MULTI-BULAN dari competitionWeeks untuk mengunci garis grafik makro merah secara otomatis
+  const peakMonthsForChart = useMemo(() => {
+      return [...new Set(competitionWeeks.map(w => w.split('-')[0]))];
+  }, [competitionWeeks]);
 
   const calculateScore = () => {
     if (!evaluation.score || !evaluation.target || evaluation.score <= 0) return { percentage: 0, label: "-", color: "text-slate-400", barColor: "bg-slate-200" };
@@ -213,13 +240,16 @@ const App = () => {
         const d = JSON.parse(ev.target.result);
         if(d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
         if(d.startYear) setStartYear(d.startYear);
-        if(d.athleteInfo) setAthleteInfo({...athleteInfo, ...d.athleteInfo}); // Merge identity
+        if(d.athleteInfo) setAthleteInfo({...athleteInfo, ...d.athleteInfo}); 
         if(d.startMonth !== undefined) setStartMonth(d.startMonth);
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
         if(d.phaseProps) setPhaseProps(d.phaseProps);
-        if(d.competitionMonth) setCompetitionMonth(d.competitionMonth);
         
-        // SINKRONISASI DATABASE DATA MINGGU SPESIFIK TERBARU
+        // Kompatibilitas file lama (bulan/single week) ke format baru (multi-minggu array)
+        if(d.competitionWeeks) setCompetitionWeeks(d.competitionWeeks);
+        else if(d.competitionWeek) setCompetitionWeeks([d.competitionWeek]);
+        else if(d.competitionMonth) setCompetitionWeeks([`${d.competitionMonth}-W4`]);
+        
         if(d.tryOutWeeks) setTryOutWeeks(d.tryOutWeeks);
         if(d.tryInWeeks) setTryInWeeks(d.tryInWeeks);
         
@@ -248,12 +278,9 @@ const App = () => {
       startMonth, 
       endMonth, 
       phaseProps, 
-      competitionMonth, 
-      
-      // BUNGKUS MAP OBJECT MINGGUAN KE DALAM FILE DOKUMEN
+      competitionWeeks, 
       tryOutWeeks, 
       tryInWeeks, 
-      
       locations, 
       monthlyObjectives, 
       macroValues, 
@@ -276,35 +303,29 @@ const App = () => {
       const el = reportRef.current;
       if (!el) return;
 
-      // 1. Simpan wujud asli
       const scrollContainer = el.querySelector('.overflow-x-auto');
       const originalScrollClass = scrollContainer ? scrollContainer.className : '';
       const originalElWidth = el.style.width;
       
-      // 2. Lebarkan paksa agar tabel tidak terpotong (Anti-Crop)
       el.style.width = '1400px'; 
       if (scrollContainer) {
          scrollContainer.style.overflow = 'visible';
          scrollContainer.classList.remove('overflow-x-auto');
       }
 
-      // 3. Jeda untuk render grafik Recharts
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 4. JEPRET DENGAN MESIN MODERN (Kebal OKLCH)
       const dataUrl = await toPng(el, { 
         backgroundColor: "#ffffff",
-        pixelRatio: 2 // Resolusi tinggi agar hasil cetak tajam
+        pixelRatio: 2
       });
 
-      // 5. Kembalikan tampilan ke normal
       el.style.width = originalElWidth;
       if (scrollContainer) {
          scrollContainer.className = originalScrollClass;
          scrollContainer.style.overflow = '';
       }
 
-      // 6. Unduh File
       const link = document.createElement('a'); 
       link.href = dataUrl;
       link.download = `Periodisasi_${athleteInfo.name || 'Plan'}.png`; 
@@ -319,44 +340,45 @@ const App = () => {
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
     const aoa = [];
-    const weeksCols = activeMonths.length * 4;
+    const weeksCols = allWeeks.length;
 
     aoa.push(['Tahun', ...Array(weeksCols).fill(`${startYear} ${startMonth > endMonth ? '- ' + calculatedEndYear : ''}`)]);
     
     let bulanRow = ['Bulan']; activeMonths.forEach(m => { bulanRow.push(m, '', '', ''); }); aoa.push(bulanRow);
     let mingguRow = ['Minggu']; activeMonths.forEach((m, mIdx) => [1,2,3,4].forEach(w => mingguRow.push((mIdx*4)+w))); aoa.push(mingguRow);
     
-    // PERBAIKAN ERROR LAYAR PUTIH: MENGGUNAKAN FORMAT MAP MINGGUAN BARU
     let toRow = ['Try Out']; 
-    activeMonths.forEach(m => [1,2,3,4].forEach(w => {
-        const key = `${m}-W${w}`;
-        toRow.push(tryOutWeeks && tryOutWeeks[key] ? 'TO' : '');
-    })); 
+    allWeeks.forEach(w => toRow.push(tryOutWeeks[w] ? 'TO' : '')); 
     aoa.push(toRow);
 
     let tiRow = ['Try In']; 
-    activeMonths.forEach(m => [1,2,3,4].forEach(w => {
-        const key = `${m}-W${w}`;
-        tiRow.push(tryInWeeks && tryInWeeks[key] ? 'TI' : '');
-    })); 
+    allWeeks.forEach(w => tiRow.push(tryInWeeks[w] ? 'TI' : '')); 
     aoa.push(tiRow);
     
     let locRow = ['Waktu/Lokasi']; activeMonths.forEach(m => { locRow.push(locations[m] || '', '', '', ''); }); aoa.push(locRow);
-    let faseRow = ['Fase']; activeMonths.forEach(m => { faseRow.push(getPhaseData(m).phase, '', '', ''); }); aoa.push(faseRow);
-    let subFaseRow = ['Sub Fase']; activeMonths.forEach(m => { subFaseRow.push(getPhaseData(m).subPhase, '', '', ''); }); aoa.push(subFaseRow);
+    
+    // PEMETAAN EXCEL BERDASARKAN RENTANG MINGGU BARU
+    let faseRow = ['Fase']; 
+    unifiedPhases.forEach(p => { faseRow.push(p.phase); for(let i=1; i<p.span; i++) faseRow.push(''); }); 
+    aoa.push(faseRow);
+    
+    let subFaseRow = ['Sub Fase']; 
+    unifiedSubPhases.forEach(p => { subFaseRow.push(p.subPhase); for(let i=1; i<p.span; i++) subFaseRow.push(''); }); 
+    aoa.push(subFaseRow);
+    
     let sasaranRow = ['Sasaran Prestasi']; activeMonths.forEach(m => { sasaranRow.push(monthlyObjectives[m] || '', '', '', ''); }); aoa.push(sasaranRow);
 
     aoa.push(['--- BENTUK LATIHAN ---', ...Array(weeksCols).fill('')]);
     allMaterials.forEach(mat => {
        let r = [mat];
-       activeMonths.forEach(m => [1,2,3,4].forEach(w => r.push(matrixData[`${m}-W${w}-${mat}`] ? 'V' : '')));
+       allWeeks.forEach(w => r.push(matrixData[`${w}-${mat}`] ? 'V' : ''));
        aoa.push(r);
     });
 
     aoa.push(['--- TES & EVALUASI ---', ...Array(weeksCols).fill('')]);
     ['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].forEach(test => {
        let r = [test];
-       activeMonths.forEach(m => [1,2,3,4].forEach(w => r.push(testSchedule[`${m}-W${w}-${test}`] ? 'V' : '')));
+       allWeeks.forEach(w => r.push(testSchedule[`${w}-${test}`] ? 'V' : ''));
        aoa.push(r);
     });
 
@@ -400,15 +422,15 @@ const App = () => {
 
     let currentC = 1;
     unifiedPhases.forEach(p => {
-      const cEnd = currentC + (p.span * 4) - 1;
-      merges.push({ s: {r:6, c:currentC}, e: {r:6, c:cEnd} });
+      const cEnd = currentC + p.span - 1;
+      if(p.span > 1) merges.push({ s: {r:6, c:currentC}, e: {r:6, c:cEnd} });
       currentC = cEnd + 1;
     });
 
     currentC = 1;
     unifiedSubPhases.forEach(p => {
-      const cEnd = currentC + (p.span * 4) - 1;
-      merges.push({ s: {r:7, c:currentC}, e: {r:7, c:cEnd} });
+      const cEnd = currentC + p.span - 1;
+      if(p.span > 1) merges.push({ s: {r:7, c:currentC}, e: {r:7, c:cEnd} });
       currentC = cEnd + 1;
     });
 
@@ -474,7 +496,6 @@ const App = () => {
             <div className="p-6 space-y-5">
               {['morning', 'afternoon'].map(session => {
                 const currentIntensitas = dailySessions[selectedDay][session].int || 5;
-                // Rumus konversi otomatis sports science berbasis data 1RM di Langkah 1
                 const bpTarget = Math.round((currentIntensitas / 10) * (athleteInfo.benchPress1RM || 100));
                 const squatTarget = Math.round((currentIntensitas / 10) * (athleteInfo.squat1RM || 100));
 
@@ -489,7 +510,6 @@ const App = () => {
                       </div>
                     </div>
 
-                    {/* SLIDER INTENSITAS HARIAN (Siklus Mikro Wave Planner) */}
                     <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-inner">
                       <input 
                         type="range" 
@@ -508,13 +528,12 @@ const App = () => {
                       />
                     </div>
 
-                    {/* BAR PANDUAN SPORTS SCIENCE INSTAN UNTUK ASISTEN */}
                     <div className="grid grid-cols-2 gap-1.5 text-[8px] font-black uppercase text-center">
                       <div className="bg-amber-50 text-amber-700 p-1 rounded-md border border-amber-100 truncate">
-                        🏋️‍♂️ BP/Upper: {bpTarget} kg
+                        🏋️‍♂️ BP: {bpTarget} kg
                       </div>
                       <div className="bg-amber-100 text-amber-900 p-1 rounded-md border border-amber-200 truncate">
-                        🦵 SQ/Lower: {squatTarget} kg
+                        🦵 SQ: {squatTarget} kg
                       </div>
                     </div>
 
@@ -588,7 +607,6 @@ const App = () => {
            </div>
 
            <div className="bg-white p-5 rounded-2xl border shadow-sm min-h-[160px] flex flex-col justify-between">
-             {/* FIX: Form Identitas yang Lengkap di Langkah 1 */}
              {activeStep === 1 && (
                <div className="animate-in fade-in slide-in-from-bottom-2">
                  <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">1. Pengaturan Identitas & Total Waktu</h3>
@@ -602,7 +620,7 @@ const App = () => {
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET TAHUNAN</label><input value={athleteInfo.target} onChange={e => setAthleteInfo({...athleteInfo, target: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: JUARA PON"/></div>
                  </div>
 
-                 {/* --- PARAMETER SPORTS SCIENCE PARAM (DURASI & 1RM ATLAS) --- */}
+                 {/* --- PARAMETER SPORTS SCIENCE PARAM --- */}
                  <div className="grid grid-cols-3 gap-4 border-t pt-4 mb-4 bg-slate-50 p-4 rounded-xl border">
                     <div>
                       <label className="block text-[9px] font-black text-blue-700 mb-1">DURASI MAKSIMAL MINGGUAN (MENIT)</label>
@@ -614,7 +632,7 @@ const App = () => {
                     </div>
                     <div>
                       <label className="block text-[9px] font-black text-amber-700 mb-1">1RM SQUAT / LOWER BODY (KG)</label>
-                      <input type="number" value={athleteInfo.squat1RM || 100} onChange={e => setAthleteInfo({...athleteInfo, squat1RM: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-amber-600" placeholder="Cont Contoh: 100"/>
+                      <input type="number" value={athleteInfo.squat1RM || 100} onChange={e => setAthleteInfo({...athleteInfo, squat1RM: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-amber-600" placeholder="Contoh: 100"/>
                     </div>
                   </div>
 
@@ -633,26 +651,45 @@ const App = () => {
                  <div className="grid grid-cols-2 gap-6">
                    <div><label className="block text-[9px] font-bold text-slate-500 mb-1">PROPORSI FASE PERSIAPAN UMUM VS KHUSUS (%)</label><input type="number" value={phaseProps.prep} onChange={e => setPhaseProps({...phaseProps, prep: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[11px] font-black text-blue-600" title="Contoh: 50 berarti setengah Persiapan Umum, setengah Persiapan Khusus"/></div>
                  </div>
-                 <p className="text-[9px] font-bold text-slate-400 mt-2 italic">*Aplikasi menggunakan metode Backward Planning. Fase akan dihitung mundur dari Target Bulan Kompetisi Utama Anda.</p>
+                 <p className="text-[9px] font-bold text-slate-400 mt-2 italic">*Aplikasi menggunakan metode Backward Planning. Fase akan dihitung mundur secara otomatis dari Target Minggu Kompetisi Utama Anda.</p>
                  <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(3)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
                </div>
              )}
              {activeStep === 3 && (
                <div className="animate-in fade-in slide-in-from-bottom-2">
                  <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">3. Penentuan Peaking & Uji Coba (Spesifik Minggu)</h3>
-                 <div className="grid grid-cols-3 gap-6">
-                   <div>
-                     <label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET KOMPETISI UTAMA (PEAK)</label>
-                     <select value={competitionMonth} onChange={e => setCompetitionMonth(e.target.value)} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase text-red-600 cursor-pointer">{activeMonths.map(m=><option key={m} value={m}>{m}</option>)}</select>
+                 <div className="grid grid-cols-3 gap-6 h-[340px]">
+                   
+                   {/* PEAK WEEKS GRIDS (Baru) */}
+                   <div className="bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col h-full">
+                   <label className="block text-[9px] font-black text-red-700 mb-2 uppercase tracking-wider">🎯 KOMPETISI UTAMA (BISA LEBIH DARI 1 MINGGU)</label>
+                     <div className="grid grid-cols-2 gap-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                       {activeMonths.map(m => (
+                         <div key={`peak-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center h-fit">
+                           <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
+                           <div className="flex justify-center gap-0.5 flex-wrap">
+                             {[1, 2, 3, 4].map(w => {
+                               const key = `${m}-W${w}`;
+                               const isChecked = competitionWeeks.includes(key);
+                               return (
+                                 <button key={`peak-btn-${key}`} onClick={() => setCompetitionWeeks(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key])} className={`w-5 h-5 text-[8px] font-black rounded transition-all ${isChecked ? 'bg-red-600 text-white shadow-sm' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>
+                                   W{w}
+                                 </button>
+                               );
+                             })}
+                           </div>
+                         </div>
+                       ))}
+                     </div>
                    </div>
-                   <div className="col-span-2 flex flex-col gap-3">
-                     
+
+                   <div className="col-span-2 flex flex-col gap-3 h-full">
                      {/* TRY OUT GRIDS */}
-                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100">
+                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex-1 flex flex-col">
                        <label className="block text-[9px] font-black text-purple-700 mb-2 uppercase tracking-wider">✈️ Try Out / Laga Tandang (Pilih Minggu Spesifik)</label>
-                       <div className="grid grid-cols-4 gap-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                       <div className="grid grid-cols-4 gap-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
                          {activeMonths.map(m => (
-                           <div key={`to-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center">
+                           <div key={`to-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center h-fit">
                              <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
                              <div className="flex justify-center gap-0.5">
                                {[1, 2, 3, 4].map(w => {
@@ -671,11 +708,11 @@ const App = () => {
                      </div>
 
                      {/* TRY IN GRIDS */}
-                     <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                     <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 flex-1 flex flex-col">
                        <label className="block text-[9px] font-black text-orange-700 mb-2 uppercase tracking-wider">🏠 Try In / Laga Internal (Pilih Minggu Spesifik)</label>
-                       <div className="grid grid-cols-4 gap-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                       <div className="grid grid-cols-4 gap-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
                          {activeMonths.map(m => (
-                           <div key={`ti-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center">
+                           <div key={`ti-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center h-fit">
                              <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
                              <div className="flex justify-center gap-0.5">
                                {[1, 2, 3, 4].map(w => {
@@ -722,7 +759,7 @@ const App = () => {
              {activeStep === 5 && (
                  <div className="animate-in fade-in slide-in-from-bottom-2">
                    <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">5. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
-                   <p className="text-[9px] font-bold text-slate-500 mb-3">Silakan atur angka parameter beban untuk setiap bulan secara manual. Sistem akan otomatis mengonversi ke target durasi dan beban latihan nyata.</p>
+                   <p className="text-[9px] font-bold text-slate-500 mb-3">Silakan atur angka parameter beban untuk setiap bulan secara manual. Sistem otomatis mengonversi ke target durasi dan beban nyata.</p>
                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                      {activeMonths.map(m => {
                       const computedMinutes = Math.round(((macroValues[m]?.vol || 50) / 100) * (athleteInfo.maxDuration || 300));
@@ -744,7 +781,6 @@ const App = () => {
                             <span className="text-[8px] font-bold text-slate-400">Peak</span>
                             <input type="number" min="1" max="5" value={macroValues[m]?.peak} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], peak:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-orange-500 p-0.5" title="Peaking (1-5)"/>
                           </div>
-                          {/* OUTPUT METRIKS NYATA */}
                           <div className="border-t pt-1 space-y-0.5 text-left bg-white p-1 rounded border border-slate-100 text-[8px] font-black">
                             <div className="text-blue-700 truncate" title="Target Durasi Mingguan">⏱️ {computedMinutes} m/w</div>
                             <div className="text-amber-700 truncate" title="Target Tonase Upper Body">🏋️‍♂️ BP: {computedBP}kg</div>
@@ -786,23 +822,18 @@ const App = () => {
            </div>
         </div>
 
-{/* =========================================
+        {/* =========================================
             AREA KHUSUS CETAK (PNG & PDF)
             ========================================= */}
         <div ref={reportRef} className="bg-white pb-4 print:pb-0">
 
-        {/* HEADER IDENTITAS PRINT */}
         <div className="p-8 pb-4 print:pt-4">
-           
-           {/* --- TAMBAHAN HEADER JUDUL UTAMA --- */}
            <div className="mb-6 flex justify-between items-end border-b-2 border-slate-200 pb-4">
               <div>
                  <h1 className={`text-2xl font-black tracking-tighter uppercase ${t.textDark} print:text-3xl`}>ANNUAL TRAINING PLAN SYSTEM</h1>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Designed by fiqhipondaa9</p>
               </div>
            </div>
-           {/* ----------------------------------- */}
-
            <table className="text-[10px] font-black text-slate-700 uppercase print:text-[12px]">
              <tbody>
                <tr><td className="w-32 pb-1">Cabang Olahraga</td><td className="w-4 pb-1">:</td><td className="pb-1">{athleteInfo.cabor}</td></tr>
@@ -814,9 +845,6 @@ const App = () => {
            </table>
         </div>
 
-        {/* =========================================
-            MASTER TIMELINE (KALENDER RAKSASA)
-            ========================================= */}
         <div className="px-6 pb-6 print:px-0">
           <div className="flex justify-between items-center mb-3">
              <h2 className="text-xl font-black uppercase text-slate-900 tracking-tighter print:text-2xl">PERIODISASI LATIHAN</h2>
@@ -831,7 +859,7 @@ const App = () => {
                 {/* TAHUN */}
                 <tr>
                   <th className="p-2 border-b border-r bg-slate-100 sticky left-0 z-20 text-center text-[9px] font-black text-slate-500 uppercase min-w-[180px] print:static">Tahun</th>
-                  <th colSpan={activeMonths.length * 4} className="p-1 border-b bg-yellow-300 text-center text-[10px] font-black text-yellow-900 uppercase print:bg-transparent print:border print:text-black">{startYear} {startMonth > endMonth ? `- ${calculatedEndYear}` : ''}</th>
+                  <th colSpan={allWeeks.length} className="p-1 border-b bg-yellow-300 text-center text-[10px] font-black text-yellow-900 uppercase print:bg-transparent print:border print:text-black">{startYear} {startMonth > endMonth ? `- ${calculatedEndYear}` : ''}</th>
                 </tr>
                 {/* BULAN */}
                 <tr>
@@ -840,42 +868,30 @@ const App = () => {
                     <th key={`tm-${m}`} colSpan={4} className="p-1 border-b border-r bg-yellow-200 text-center text-[9px] font-black text-yellow-900 uppercase print:bg-transparent print:border print:text-black">{m}</th>
                   ))}
                 </tr>
-                {/* MINGGU ABSOLUT (1-52) */}
+                {/* MINGGU ABSOLUT */}
                 <tr>
                   <th className="p-2 border-b border-r bg-slate-100 sticky left-0 z-20 text-center text-[9px] font-black text-slate-500 uppercase print:static">Minggu</th>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
-                    const absWeek = (mIdx * 4) + w;
-                    return <th key={`aw-${m}-${w}`} className="p-1 border-b border-r bg-yellow-100 text-center text-[8px] font-black text-yellow-900 w-8 print:bg-transparent print:border print:text-black">{absWeek}</th>
-                  }))}
+                  {allWeeks.map((w, idx) => (
+                    <th key={`aw-${w}`} className="p-1 border-b border-r bg-yellow-100 text-center text-[8px] font-black text-yellow-900 w-8 print:bg-transparent print:border print:text-black">{idx + 1}</th>
+                  ))}
                 </tr>
-                {/* TRY OUT & TRY IN (MINGGU SPESIFIK) */}
-                                <tr>
-                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-purple-700 uppercase print:static print:text-black">Try Out</th>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
-                    const key = `${m}-W${w}`;
-                    return (
-                      <th key={`to-${m}-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black ${tryOutWeeks[key] ? 'bg-purple-500 text-white print:bg-gray-400' : 'bg-white'}`}>
-                        {tryOutWeeks[key] ? 'TO' : ''}
-                      </th>
-                    );
-                  }))}
-                </tr>
-                <tr>
-                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-orange-600 uppercase print:static print:text-black">Try In</th>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
-                    const key = `${m}-W${w}`;
-                    return (
-                      <th key={`ti-${m}-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black ${tryInWeeks[key] ? 'bg-orange-400 text-white print:bg-gray-300' : 'bg-white'}`}>
-                        {tryInWeeks[key] ? 'TI' : ''}
-                      </th>
-                    );
-                  }))}
-                </tr>
+                {/* TRY OUT */}
+                <tr>
+                  <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-purple-700 uppercase print:static print:text-black">Try Out</th>
+                  {allWeeks.map(w => (
+                    <th key={`to-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black ${tryOutWeeks[w] ? 'bg-purple-500 text-white print:bg-gray-400' : 'bg-white'}`}>
+                      {tryOutWeeks[w] ? 'TO' : ''}
+                    </th>
+                  ))}
+                </tr>
+                {/* TRY IN */}
                 <tr>
                   <th className="p-1 border-b border-r bg-slate-50 sticky left-0 z-20 text-right pr-4 text-[9px] font-black text-orange-600 uppercase print:static print:text-black">Try In</th>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
-                    <th key={`ti-${m}-${w}`} className={`p-1 border-b border-r text-center ${tryInMonths.includes(m) ? 'bg-orange-400 print:bg-gray-300' : 'bg-white'}`}></th>
-                  )))}
+                  {allWeeks.map(w => (
+                    <th key={`ti-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black ${tryInWeeks[w] ? 'bg-orange-400 text-white print:bg-gray-300' : 'bg-white'}`}>
+                      {tryInWeeks[w] ? 'TI' : ''}
+                    </th>
+                  ))}
                 </tr>
                 {/* LOKASI / WAKTU KALENDER */}
                 <tr>
@@ -886,17 +902,18 @@ const App = () => {
                     </th>
                   ))}
                 </tr>
-                {/* FASE & SUB FASE */}
+                {/* FASE */}
                 <tr>
                   <th className="p-1 border-b border-r bg-slate-100 sticky left-0 z-20 text-left pl-4 text-[9px] font-black text-slate-500 uppercase print:static">Fase</th>
                   {unifiedPhases.map((p, idx) => (
-                    <th key={`p-${idx}`} colSpan={p.span * 4} className={`p-1 border-b border-r text-[9px] font-black uppercase text-center ${p.color} print:bg-transparent print:border print:text-black`}>{p.phase}</th>
+                    <th key={`p-${idx}`} colSpan={p.span} className={`p-1 border-b border-r text-[9px] font-black uppercase text-center ${p.color} print:bg-transparent print:border print:text-black`}>{p.phase}</th>
                   ))}
                 </tr>
+                {/* SUB FASE */}
                 <tr>
                   <th className="p-1 border-b border-r bg-slate-100 sticky left-0 z-20 text-left pl-4 text-[9px] font-black text-slate-500 uppercase print:static">Sub Fase</th>
                   {unifiedSubPhases.map((p, idx) => (
-                    <th key={`sp-${idx}`} colSpan={p.span * 4} className={`p-1 border-b border-r text-[8px] font-black uppercase text-center ${p.color} print:bg-transparent print:border print:text-black`}>{p.subPhase}</th>
+                    <th key={`sp-${idx}`} colSpan={p.span} className={`p-1 border-b border-r text-[8px] font-black uppercase text-center ${p.color} print:bg-transparent print:border print:text-black`}>{p.subPhase}</th>
                   ))}
                 </tr>
                 {/* SASARAN PRESTASI */}
@@ -924,36 +941,41 @@ const App = () => {
                   return (
                   <tr key={mat} className={rowColor}>
                     <td className="p-1.5 px-3 border-b border-r sticky left-0 z-10 font-bold text-[9px] text-slate-700 uppercase shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] pl-4 print:static print:shadow-none print:border">{mat}</td>
-                    {activeMonths.map(m => [1,2,3,4].map(w => (
-                      <td key={`mat-${m}-W${w}`} className="p-1 border-b border-r text-center print:border">
-                        <PrintSafeCheckbox checked={!!matrixData[`${m}-W${w}-${mat}`]} onChange={() => setMatrixData(prev => ({...prev, [`${m}-W${w}-${mat}`]: !prev[`${m}-W${w}-${mat}`]}))} colorHex={t.hex} />
+                    {allWeeks.map(w => (
+                      <td key={`mat-${w}`} className="p-1 border-b border-r text-center print:border">
+                        <PrintSafeCheckbox checked={!!matrixData[`${w}-${mat}`]} onChange={() => setMatrixData(prev => ({...prev, [`${w}-${mat}`]: !prev[`${w}-${mat}`]}))} colorHex={t.hex} />
                       </td>
-                    )))}
+                    ))}
                   </tr>
                 )})}
 
-                {/* SIKLUS MAKRO / MIKRO INFO */}
+                {/* SIKLUS MAKRO */}
                 <tr>
                   <td className="p-1.5 px-3 border-b border-r bg-slate-100 sticky left-0 z-10 font-black text-[9px] text-slate-500 uppercase print:static print:border print:bg-transparent">Siklus Makro</td>
                   {activeMonths.map((m, idx) => <td key={`makro-${m}`} colSpan={4} className="p-1 border-b border-r bg-yellow-100 text-center text-[9px] font-black text-yellow-900 print:bg-transparent print:border print:text-black">{idx + 1}</td>)}
                 </tr>
+                {/* SIKLUS MIKRO (PEAK HIGHLIGHT) */}
                 <tr>
                   <td className="p-1.5 px-3 border-b border-r bg-slate-100 sticky left-0 z-10 font-black text-[9px] text-slate-500 uppercase print:static print:border print:bg-transparent">Siklus Mikro</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => {
-                    const absWeek = (mIdx * 4) + w;
-                    return <td key={`mikro-${m}-${w}`} className="p-1 border-b border-r bg-cyan-100 text-center text-[8px] font-black text-cyan-900 w-8 print:bg-transparent print:border print:text-black">{absWeek}</td>
-                  }))}
+                  {allWeeks.map((w, idx) => {
+                    const isPeakWeek = competitionWeeks.includes(w);
+                    return (
+                      <td key={`mikro-${w}`} className={`p-1 border-b border-r text-center text-[8px] font-black w-8 transition-colors print:border ${isPeakWeek ? 'bg-red-600 text-white animate-pulse print:bg-red-500 print:text-white' : 'bg-cyan-100 text-cyan-900 print:bg-transparent print:text-black'}`}>
+                        {isPeakWeek ? 'PEAK' : idx + 1}
+                      </td>
+                    );
+                  })}
                 </tr>
 
-                {/* TES KESEHATAN, FISIK, TEKNIK, PSIKIS */}
+                {/* TES EVALUASI */}
                 {['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].map(test => (
                   <tr key={`test-${test}`} className="hover:bg-slate-50 transition-colors">
                     <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">{test}</td>
-                    {activeMonths.map(m => [1,2,3,4].map(w => (
-                      <td key={`t-${m}-W${w}`} className="p-1 border-b border-r text-center print:border">
-                        <PrintSafeCheckbox checked={!!testSchedule[`${m}-W${w}-${test}`]} onChange={() => setTestSchedule(prev => ({...prev, [`${m}-W${w}-${test}`]: !prev[`${m}-W${w}-${test}`]}))} colorHex="#ef4444" />
+                    {allWeeks.map(w => (
+                      <td key={`t-${w}`} className="p-1 border-b border-r text-center print:border">
+                        <PrintSafeCheckbox checked={!!testSchedule[`${w}-${test}`]} onChange={() => setTestSchedule(prev => ({...prev, [`${w}-${test}`]: !prev[`${w}-${test}`]}))} colorHex="#ef4444" />
                       </td>
-                    )))}
+                    ))}
                   </tr>
                 ))}
 
@@ -963,19 +985,19 @@ const App = () => {
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-black text-[9px] text-blue-600 pl-4 print:static print:border print:text-black">Volume</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`v-${m}-${w}`} className="p-0 border-b border-r bg-white text-center print:border"><div className="h-full w-full bg-blue-100 text-[7px] font-bold text-blue-800 flex items-center justify-center print:bg-transparent print:text-black">{w===1 ? macroValues[m]?.vol : ''}</div></td>
                   )))}
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-black text-[9px] text-red-600 pl-4 print:static print:border print:text-black">Intensitas</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`i-${m}-${w}`} className="p-0 border-b border-r bg-white text-center print:border"><div className="h-full w-full bg-red-100 text-[7px] font-bold text-red-800 flex items-center justify-center print:bg-transparent print:text-black">{w===1 ? macroValues[m]?.int : ''}</div></td>
                   )))}
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-black text-[9px] text-orange-600 pl-4 print:static print:border print:text-black">Peak Performance</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`pk-${m}-${w}`} className="p-0 border-b border-r bg-white text-center print:border"><div className="h-full w-full bg-orange-100 text-[7px] font-bold text-orange-800 flex items-center justify-center print:bg-transparent print:text-black">{w===1 ? macroValues[m]?.peak : ''}</div></td>
                   )))}
                 </tr>
@@ -986,25 +1008,25 @@ const App = () => {
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Fisik</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`f-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.fisik : ''}</td>
                   )))}
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Teknik</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`t-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.teknik : ''}</td>
                   )))}
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Taktik</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`tak-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.taktik : ''}</td>
                   )))}
                 </tr>
                 <tr>
                   <td className="p-1 px-3 border-b border-r bg-white sticky left-0 z-10 font-bold text-[9px] text-slate-600 pl-4 print:static print:border">Psikologis</td>
-                  {activeMonths.flatMap((m, mIdx) => [1,2,3,4].map(w => (
+                  {activeMonths.flatMap((m) => [1,2,3,4].map(w => (
                     <td key={`p-${m}-${w}`} className="p-0 border-b border-r bg-slate-50 text-center text-[7px] font-bold text-slate-500 print:bg-transparent print:border">{w===1 ? trainingFactors[m]?.psikis : ''}</td>
                   )))}
                 </tr>
@@ -1019,7 +1041,7 @@ const App = () => {
                         <span className="text-[8px] font-black text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded border border-yellow-200 mt-2">Peaking Area</span>
                      </div>
                   </td>
-                  <td colSpan={activeMonths.length * 4} className="p-0 border-b border-r bg-white align-top print:border">
+                  <td colSpan={allWeeks.length} className="p-0 border-b border-r bg-white align-top print:border">
                     <div className="h-64 w-full mt-4 print:h-48">
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ left: 30, right: 30, top: 10, bottom: 10 }}>
@@ -1028,7 +1050,9 @@ const App = () => {
                           <YAxis yAxisId="left" hide domain={[0, 100]}/>
                           <YAxis yAxisId="right" orientation="right" hide domain={[0, 5]}/>
                           <RechartsTooltip/>
-                          <ReferenceLine yAxisId="left" x={competitionMonth} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'insideTopRight', value: 'PEAK', fill: '#ef4444', fontSize: 10, fontWeight: 'black' }} />
+                          {peakMonthsForChart.map((pm, i) => (
+                            <ReferenceLine key={`ref-${i}`} yAxisId="left" x={pm} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'insideTopRight', value: 'PEAK MONTH', fill: '#ef4444', fontSize: 10, fontWeight: 'black' }} />
+                          ))}
                           <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="Peak" fill="#fef08a" stroke="#eab308" opacity={0.3} strokeWidth={2} />
                           <Line isAnimationActive={false} yAxisId="left" type="monotone" name="Intensitas" dataKey="Intensitas" stroke="#ef4444" strokeWidth={3} dot={{r: 4, fill: '#ef4444'}} activeDot={{r: 6}}/>
                           <Line isAnimationActive={false} yAxisId="left" type="monotone" name="Volume" dataKey="Volume" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} activeDot={{r: 6}}/>
@@ -1041,7 +1065,7 @@ const App = () => {
             </table>
           </div>
         </div>
-        </div> {/* <-- PENUTUP reportRef DI SINI */}
+        </div> 
 
         {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
         <div className="grid grid-cols-2 gap-8 mb-8 print:hidden px-6 mt-8">
