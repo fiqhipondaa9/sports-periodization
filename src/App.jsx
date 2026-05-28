@@ -3,6 +3,7 @@ import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as Rech
 import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
+import PsychologicalPanel from "./PsychologicalPanel";
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import qrisImage from './assets/shareqr.png';
@@ -1048,28 +1049,8 @@ const App = () => {
            {/* SUB-KOMPONEN: MODUL BIOMOTORIK */}
 <BiomotorPanel athleteInfo={athleteInfo} t={t} />
              
-             {/* PSIKOLOGI */}
-           <div className="border p-8 rounded-3xl bg-slate-900 text-white shadow-inner h-80 flex flex-col">
-             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-               <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className={`w-5 h-5 ${t.text}`}/> Asesmen Psikologi Bertarung</h2>
-               <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest italic">by fiqhipondaa9 system</span>
-             </div>
-             <div className="grid grid-cols-3 gap-4 flex-1 content-start">
-                {mentalData.map((item, idx) => (
-                  <div key={item.id} className="space-y-2 text-center group flex flex-col items-center">
-                    <input value={item.label} onChange={e => { 
-                       const newData = mentalData.map((m, i) => i === idx ? { ...m, label: e.target.value } : m); setMentalData(newData); 
-                    }} className="bg-transparent text-[9px] font-black text-slate-400 uppercase outline-none text-center focus:text-white transition-colors w-full" />
-                    <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700 shadow-md transition-all w-24" style={{ '--tw-border-opacity': 1, borderColor: item.score >= 8 ? t.hex : '#334155' }}>
-                      <input type="number" min="1" max="9" value={item.score} onChange={e => { 
-                         const newData = mentalData.map((m, i) => i === idx ? { ...m, score: Number(e.target.value) } : m); setMentalData(newData); 
-                      }} className="bg-transparent w-full text-center font-black text-2xl outline-none" style={{ color: t.hex }} />
-                    </div>
-                  </div>
-                ))}
-             </div>
-           </div>
-        </div>
+             {/* SUB-KOMPONEN: ASESMEN PSIKOLOGI */}
+        <PsychologicalPanel mentalData={mentalData} setMentalData={setMentalData} t={t} />
 
         {/* FOOTER HAK CIPTA */}
         <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center opacity-50 px-8 pb-4 print:hidden">
@@ -1078,6 +1059,7 @@ const App = () => {
               <Globe className="w-3 h-3 text-slate-400"/><select value={terminology} onChange={e => setTerminology(e.target.value)} className="bg-transparent font-black outline-none uppercase text-[9px] cursor-pointer text-slate-400"><option value="Eropa">Mazhab Eropa</option><option value="Amerika">Mazhab Amerika</option></select>
            </div>
         </div>
+      </div>
       </div>
       </div>
       );
