@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
 import DailyModal from './DailyModal';
+import BiomotorPanel from "./BiomotorPanel";
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import qrisImage from './assets/shareqr.png';
@@ -19,26 +20,6 @@ const THEMES = {
   indigo: { id: 'indigo', name: 'Indigo', hex: '#6366f1', bg: 'bg-indigo-600', text: 'text-indigo-600', textDark: 'text-indigo-900', bgLight: 'bg-indigo-50', borderLight: 'border-indigo-100', hoverBg: 'hover:bg-indigo-700', hoverLight: 'hover:bg-indigo-50' },
   cyan: { id: 'cyan', name: 'Cyan', hex: '#06b6d4', bg: 'bg-cyan-600', text: 'text-cyan-600', textDark: 'text-cyan-900', bgLight: 'bg-cyan-50', borderLight: 'border-cyan-100', hoverBg: 'hover:bg-cyan-700', hoverLight: 'hover:bg-cyan-50' },
   zinc: { id: 'zinc', name: 'Zinc', hex: '#52525b', bg: 'bg-zinc-600', text: 'text-zinc-600', textDark: 'text-zinc-900', bgLight: 'bg-zinc-50', borderLight: 'border-zinc-100', hoverBg: 'hover:bg-zinc-700', hoverLight: 'hover:bg-zinc-50' }
-};
-
-const biomotorData = {
-  Strength: [
-    { id: 'Adaptasi Anatomi', param: '40-60% 1RM | 12-20 Reps', rest: 'Rest: 30-120 Detik', desc: 'Modifikasi ketebalan jaringan ikat & fungsi ligamen.' },
-    { id: 'Hipertrofi', param: '60-80% 1RM | 6-12 Reps', rest: 'Rest: 1-2 Menit', desc: 'Pembesaran diameter otot kontraktil (sarkoplasma).' },
-    { id: 'Kekuatan Maksimum', param: '70-100% 1RM | 1-6 Reps', rest: 'Rest: 3-5+ Menit', desc: 'Eksitasi impuls neuromuskuler & firing rate neuron.' },
-    { id: 'Konversi (Power)', param: '30-80% 1RM | 8-15 Reps Balistik', rest: 'Rest: 3-4 Menit', desc: 'Optimalisasi laju percepatan gaya (RFD).' },
-    { id: 'Konversi (Endurance)', param: '30-60% 1RM | 15-30+ Reps', rest: 'Rest: 0.5-2 Menit', desc: 'Ketahanan toleransi cairan asam laktat darah.' },
-    { id: 'Pemeliharaan', param: '1-4x Sesi/Minggu', rest: 'Rest: Relatif', desc: 'Mencegah detraining selama musim kompetisi.' },
-    { id: 'Cessation', param: 'Hentikan Beban 5-7 Hari', rest: 'Rest: Total', desc: 'Fasilitasi superkompensasi puncak.' }
-  ],
-  Endurance: [
-    { id: 'Aerobic Endurance', param: '120-150 bpm', rest: 'Volume Tinggi', desc: 'Meningkatkan VO2Max & kapilarisasi.' },
-    { id: 'Specific Endurance', param: 'Simulasi Pertandingan', rest: 'Sesuai Cabor', desc: 'Menyesuaikan ergogenesis cabang olahraga.' }
-  ],
-  Speed: [
-    { id: 'Aerobic & Anaerobic', param: 'Fartlek / Interval', rest: 'Rest Moderat', desc: 'Fondasi daya tahan kecepatan.' },
-    { id: 'Kecepatan Spesifik', param: 'Sprint Maksimal', rest: 'Rest: 5+ Menit (Wajib)', desc: 'Kecepatan gerak cabor tanpa residu laktat.' }
-  ]
 };
 
 const microTypesDesc = {
@@ -112,7 +93,7 @@ const App = () => {
   ]);
   
   const [evaluation, setEvaluation] = useState({ name: 'Tes Fisik Bleep', score: 50, target: 100, isTime: false });
-  const [activeBiomotor, setActiveBiomotor] = useState('Strength');
+  
   const [terminology, setTerminology] = useState('Eropa');
   const [nutritionNote, setNutritionNote] = useState('Input catatan gizi, suplemen, atau berat badan di sini.');
 
@@ -1062,39 +1043,12 @@ const App = () => {
             </div>
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-8 px-6 print:hidden">
-           {/* MODUL BIOMOTORIK BOMPA */}
-           <div className="border p-6 rounded-3xl bg-slate-50/50 flex flex-col shadow-sm border-slate-200 h-80">
-             <div className="flex justify-between items-center mb-4">
-               <h2 className="font-black uppercase tracking-tighter flex items-center gap-2"><Dumbbell className="text-slate-600 w-4 h-4"/> Pemandu Biomotorik Spesifik</h2>
-             </div>
+           
+           {/* SUB-KOMPONEN: MODUL BIOMOTORIK */}
+<BiomotorPanel athleteInfo={athleteInfo} t={t} />
              
-             {athleteInfo.age.includes('U13') && activeBiomotor === 'Strength' && (
-               <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-xl flex gap-2 items-start shadow-sm">
-                 <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"/>
-                 <p className="text-[9px] font-bold text-red-700 leading-tight">PERINGATAN LTAD BOMPA: Atlet U13 dilarang keras melakukan beban mekanik.</p>
-               </div>
-             )}
-
-             <div className="flex bg-white p-1 rounded-xl mb-4 border">
-               {['Strength', 'Endurance', 'Speed'].map(type => (
-                 <button key={type} onClick={() => setActiveBiomotor(type)} className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all ${activeBiomotor === type ? t.bg + ' text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>{type.toUpperCase()}</button>
-               ))}
-             </div>
-             <div className="space-y-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-               {biomotorData[activeBiomotor].map(p => (
-                 <div key={p.id} className="p-3 rounded-2xl border-2 transition-all bg-white border-slate-100 hover:border-slate-200">
-                    <p className={`text-[10px] font-black uppercase mb-1 ${t.textDark}`}>{p.id}</p>
-                    <p className={`text-[9px] font-bold mb-0.5 ${t.text}`}>{p.param}</p>
-                    <p className="text-[8px] font-black text-orange-500 mb-1">{p.rest}</p>
-                    <p className="text-[8px] text-slate-500 italic">{p.desc}</p>
-                 </div>
-               ))}
-             </div>
-           </div>
-
-           {/* PSIKOLOGI */}
+             {/* PSIKOLOGI */}
            <div className="border p-8 rounded-3xl bg-slate-900 text-white shadow-inner h-80 flex flex-col">
              <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
                <h2 className="font-black uppercase flex items-center gap-2 tracking-tighter text-sm"><Brain className={`w-5 h-5 ${t.text}`}/> Asesmen Psikologi Bertarung</h2>
@@ -1125,8 +1079,8 @@ const App = () => {
            </div>
         </div>
       </div>
-    </div>
-  );
+      </div>
+      );
 };
 
 export default App;
