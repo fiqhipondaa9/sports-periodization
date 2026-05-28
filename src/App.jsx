@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
-import { Trophy, Zap, Brain, Activity, Target, Download, BarChart2, Globe, Save, Upload, Plus, X, Flag, FileSpreadsheet, Image as ImageIcon, ClipboardList, AlertTriangle, Palette, Calendar, Coffee, MessageCircle, CheckCircle2, ArrowRight, Dumbbell } from 'lucide-react';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Download, Globe, Save, Upload, FileSpreadsheet, Image as ImageIcon, Coffee } from 'lucide-react';
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
@@ -8,6 +8,7 @@ import NutritionPanel from "./NutritionPanel";
 import EvaluationPanel from "./EvaluationPanel";
 import MicrocyclePanel from "./MicrocyclePanel";
 import ControlPanel from "./ControlPanel";
+import PeriodizationTable from "./PeriodizationTable";
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import qrisImage from './assets/shareqr.png';
@@ -27,12 +28,6 @@ const THEMES = {
   zinc: { id: 'zinc', name: 'Zinc', hex: '#52525b', bg: 'bg-zinc-600', text: 'text-zinc-600', textDark: 'text-zinc-900', bgLight: 'bg-zinc-50', borderLight: 'border-zinc-100', hoverBg: 'hover:bg-zinc-700', hoverLight: 'hover:bg-zinc-50' }
 };
 
-const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
-  <div onClick={onChange} className="cursor-pointer flex items-center justify-center w-3 h-3 mx-auto rounded-[2px] border transition-colors shadow-sm" style={{ backgroundColor: checked ? colorHex : '#ffffff', borderColor: checked ? colorHex : '#cbd5e1', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-    {checked && <svg viewBox="0 0 14 14" fill="none" className="w-2.5 h-2.5 text-white stroke-current stroke-[3] stroke-linecap-round stroke-linejoin-round"><polyline points="2.5 7 5.5 10 11.5 3"/></svg>}
-  </div>
-);
-
 const App = () => {
   const reportRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -40,7 +35,6 @@ const App = () => {
   const [activeTheme, setActiveTheme] = useState('blue');
   const t = THEMES[activeTheme];
   const [activeStep, setActiveStep] = useState(1);
-
   const [startYear, setStartYear] = useState(new Date().getFullYear());
   
   const [athleteInfo, setAthleteInfo] = useState({ 
@@ -59,18 +53,15 @@ const App = () => {
   const [endMonth, setEndMonth] = useState(11); 
   const [phaseProps, setPhaseProps] = useState({ prep: 50, comp: 50, transWeeks: 4 });
   
-  // NEW: State Target Berbasis Multi-Minggu (Bisa >1 Minggu)
   const [competitionWeeks, setCompetitionWeeks] = useState(['Okt-W4']); 
   const [tryOutWeeks, setTryOutWeeks] = useState({});
   const [tryInWeeks, setTryInWeeks] = useState({});
 
-  // INDIKATOR PENYELAMAT SIKLUS: Mencegah Error "not defined" yang Mengakibatkan Layar Putih
   const tryOutMonths = useMemo(() => [], []);
   const tryInMonths = useMemo(() => [], []);
 
   const [locations, setLocations] = useState({});
   const [monthlyObjectives, setMonthlyObjectives] = useState(months.reduce((acc, m) => ({ ...acc, [m]: '' }), {}));
-
   const [macroValues, setMacroValues] = useState(months.reduce((acc, m) => ({ ...acc, [m]: { vol: 50, int: 50, peak: 3 } }), {}));
   const [trainingFactors, setTrainingFactors] = useState(months.reduce((acc, m) => ({ ...acc, [m]: { fisik: 40, teknik: 30, taktik: 20, psikis: 10 } }), {}));
   
@@ -91,10 +82,8 @@ const App = () => {
   ]);
   
   const [evaluation, setEvaluation] = useState({ name: 'Tes Fisik Bleep', score: 50, target: 100, isTime: false });
-  
   const [terminology, setTerminology] = useState('Eropa');
   const [nutritionNote, setNutritionNote] = useState('Input catatan gizi, suplemen, atau berat badan di sini.');
-
   const [isProjectorMode, setIsProjectorMode] = useState(false);
 
   const calculatedEndYear = startMonth <= endMonth ? startYear : startYear + 1;
@@ -105,8 +94,6 @@ const App = () => {
   }, [startMonth, endMonth]);
 
   const allMaterials = useMemo(() => Array.from(new Set([...LOCKED_COMPONENTS, ...materials])), [materials]);
-  
-  // PEMETAAN MINGGU KESELURUHAN (Master Week Array)
   const allWeeks = useMemo(() => activeMonths.flatMap(m => [1,2,3,4].map(w => `${m}-W${w}`)), [activeMonths]);
 
   useEffect(() => {
@@ -119,7 +106,6 @@ const App = () => {
     return () => clearInterval(apresiasiTimer);
   }, [isProjectorMode]);
 
-  // VALIDASI BOUNDARY MINGGU KOMPETISI
   useEffect(() => {
     const validWeeks = competitionWeeks.filter(w => allWeeks.includes(w));
     if (validWeeks.length !== competitionWeeks.length && allWeeks.length > 0) {
@@ -127,35 +113,22 @@ const App = () => {
     }
   }, [allWeeks, competitionWeeks]);
 
-  // ENGINE BARU: BACKWARD PLANNING BERBASIS MULTI-MINGGU (SPORTS SCIENCE)
   const getPhaseDataWeek = (weekKey) => {
     const currIdx = allWeeks.indexOf(weekKey);
-    
-    // Cari index dari semua Peak Week yang dicentang
     const peakIndices = competitionWeeks.map(w => allWeeks.indexOf(w)).filter(i => i !== -1).sort((a,b) => a-b);
     const firstPeakIdx = peakIndices.length > 0 ? peakIndices[0] : -1;
     const lastPeakIdx = peakIndices.length > 0 ? peakIndices[peakIndices.length - 1] : -1;
 
     if (currIdx === -1 || firstPeakIdx === -1) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN UMUM', color: `${t.bg} text-white`, subColor: `${t.bgLight} ${t.textDark}` };
-
-    // Jika minggu ini adalah SAAT PEAK berlangsung
     if (competitionWeeks.includes(weekKey)) return { phase: 'KOMPETISI', subPhase: 'KOMPETISI UTAMA', color: 'bg-red-600 text-white', subColor: 'bg-pink-600 text-white' };
-    
-    // Jika melewati Peak TERAKHIR -> Langsung Transisi / Pemulihan
     if (currIdx > lastPeakIdx) return { phase: 'TRANSISI', subPhase: 'PEMULIHAN AKTIF', color: 'bg-slate-500 text-white', subColor: 'bg-slate-400 text-white' };
-
-    // Jika berada di Jeda antara Peak 1 dan Peak 2 (Maintenance)
     if (currIdx > firstPeakIdx && currIdx < lastPeakIdx) return { phase: 'KOMPETISI', subPhase: 'MAINTENANCE', color: 'bg-red-500 text-white', subColor: 'bg-pink-500 text-white' };
-
-    // Pra Kompetisi (4 minggu sebelum Peak PERTAMA)
     if (currIdx >= firstPeakIdx - 4 && currIdx < firstPeakIdx) return { phase: 'KOMPETISI', subPhase: 'PRA KOMPETISI', color: 'bg-purple-600 text-white', subColor: 'bg-purple-400 text-white' };
 
-    // Perhitungan Mundur Persiapan (Backward Planning)
     const prepLength = (firstPeakIdx - 4); 
     if (prepLength <= 0) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN KHUSUS', color: `${t.bg} text-white`, subColor: 'bg-yellow-500 text-yellow-900' };
 
     const generalPrepLength = Math.ceil(prepLength * (phaseProps.prep / 100));
-
     if (currIdx < generalPrepLength) return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN UMUM', color: `${t.bg} text-white`, subColor: `${t.bgLight} ${t.textDark}` };
     return { phase: 'PERSIAPAN', subPhase: 'PERSIAPAN KHUSUS', color: `${t.bg} text-white`, subColor: 'bg-yellow-500 text-yellow-900' };
   };
@@ -177,28 +150,7 @@ const App = () => {
   }, [allWeeks, competitionWeeks, phaseProps, activeTheme]);
 
   const chartData = useMemo(() => activeMonths.map(m => ({ name: m, Intensitas: macroValues[m]?.int || 0, Volume: macroValues[m]?.vol || 0, Peak: macroValues[m]?.peak || 0 })), [activeMonths, macroValues]);
-  
-  // Ekstrak MULTI-BULAN dari competitionWeeks untuk mengunci garis grafik makro merah secara otomatis
-  const peakMonthsForChart = useMemo(() => {
-      return [...new Set(competitionWeeks.map(w => w.split('-')[0]))];
-  }, [competitionWeeks]);
-
-    const handleAddMaterial = () => {
-    const cleanInput = materialInput.trim();
-    if (cleanInput === '') return;
-    if (allMaterials.includes(cleanInput)) return alert(`Materi "${cleanInput}" sudah ada!`);
-    setMaterials([...materials, cleanInput]);
-    setMaterialInput('');
-  };
-
-  const removeMaterial = (mToRemove) => {
-    setMaterials(materials.filter(x => x !== mToRemove));
-    setMatrixData(prev => {
-        const newData = { ...prev };
-        Object.keys(newData).forEach(key => { if (key.endsWith(`-${mToRemove}`)) delete newData[key]; });
-        return newData;
-    });
-  };
+  const peakMonthsForChart = useMemo(() => [...new Set(competitionWeeks.map(w => w.split('-')[0]))], [competitionWeeks]);
 
   const handleLoadData = (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -212,15 +164,9 @@ const App = () => {
         if(d.startMonth !== undefined) setStartMonth(d.startMonth);
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
         if(d.phaseProps) setPhaseProps(d.phaseProps);
-        
-        // Kompatibilitas file lama (bulan/single week) ke format baru (multi-minggu array)
         if(d.competitionWeeks) setCompetitionWeeks(d.competitionWeeks);
-        else if(d.competitionWeek) setCompetitionWeeks([d.competitionWeek]);
-        else if(d.competitionMonth) setCompetitionWeeks([`${d.competitionMonth}-W4`]);
-        
         if(d.tryOutWeeks) setTryOutWeeks(d.tryOutWeeks);
         if(d.tryInWeeks) setTryInWeeks(d.tryInWeeks);
-        
         if(d.locations) setLocations(d.locations);
         if(d.monthlyObjectives) setMonthlyObjectives(d.monthlyObjectives);
         if(d.macroValues) setMacroValues(d.macroValues);
@@ -239,561 +185,189 @@ const App = () => {
   };
 
   const handleSaveData = () => {
-    const data = { 
-      activeTheme, 
-      startYear, 
-      athleteInfo, 
-      startMonth, 
-      endMonth, 
-      phaseProps, 
-      competitionWeeks, 
-      tryOutWeeks, 
-      tryInWeeks, 
-      locations, 
-      monthlyObjectives, 
-      macroValues, 
-      trainingFactors, 
-      matrixData, 
-      testSchedule, 
-      materials, 
-      dailySessions, 
-      nutritionNote, 
-      evaluation, 
-      mentalData 
-    };
-    
+    const data = { activeTheme, startYear, athleteInfo, startMonth, endMonth, phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations, monthlyObjectives, macroValues, trainingFactors, matrixData, testSchedule, materials, dailySessions, nutritionNote, evaluation, mentalData };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Periodisasi_${athleteInfo.name}.json`; a.click();
   };
 
   const handleExportPNG = async () => {
     try {
-      const el = reportRef.current;
-      if (!el) return;
-
-      const scrollContainer = el.querySelector('.overflow-x-auto');
+      const el = reportRef.current; if (!el) return;
+      const scrollContainer = el.querySelector('#periodization-matrix-root');
       const originalScrollClass = scrollContainer ? scrollContainer.className : '';
       const originalElWidth = el.style.width;
-      
-      el.style.width = '1400px'; 
+      el.style.width = '1450px'; 
       if (scrollContainer) {
          scrollContainer.style.overflow = 'visible';
          scrollContainer.classList.remove('overflow-x-auto');
       }
-
       await new Promise(resolve => setTimeout(resolve, 800));
-
-      const dataUrl = await toPng(el, { 
-        backgroundColor: "#ffffff",
-        pixelRatio: 2
-      });
-
+      const dataUrl = await toPng(el, { backgroundColor: "#ffffff", pixelRatio: 2 });
       el.style.width = originalElWidth;
       if (scrollContainer) {
          scrollContainer.className = originalScrollClass;
          scrollContainer.style.overflow = '';
       }
-
-      const link = document.createElement('a'); 
-      link.href = dataUrl;
-      link.download = `Periodisasi_${athleteInfo.name || 'Plan'}.png`; 
-      link.click();
-
-    } catch (error) {
-      console.error("Error Cetak PNG:", error);
-      alert("Proses PNG gagal. Pesan error: " + error.message);
-    }
+      const link = document.createElement('a'); link.href = dataUrl; link.download = `Periodisasi_${athleteInfo.name || 'Plan'}.png`; link.click();
+    } catch (error) { alert("Proses PNG gagal: " + error.message); }
   };
 
   const handleExportExcel = () => {
-    const wb = XLSX.utils.book_new();
-    const aoa = [];
-    const weeksCols = allWeeks.length;
-
+    const wb = XLSX.utils.book_new(); const aoa = []; const weeksCols = allWeeks.length;
     aoa.push(['Tahun', ...Array(weeksCols).fill(`${startYear} ${startMonth > endMonth ? '- ' + calculatedEndYear : ''}`)]);
-    
     let bulanRow = ['Bulan']; activeMonths.forEach(m => { bulanRow.push(m, '', '', ''); }); aoa.push(bulanRow);
     let mingguRow = ['Minggu']; activeMonths.forEach((m, mIdx) => [1,2,3,4].forEach(w => mingguRow.push((mIdx*4)+w))); aoa.push(mingguRow);
-    
-    let toRow = ['Try Out']; 
-    allWeeks.forEach(w => toRow.push(tryOutWeeks[w] ? 'TO' : '')); 
-    aoa.push(toRow);
-
-    let tiRow = ['Try In']; 
-    allWeeks.forEach(w => tiRow.push(tryInWeeks[w] ? 'TI' : '')); 
-    aoa.push(tiRow);
-    
+    let toRow = ['Try Out']; allWeeks.forEach(w => toRow.push(tryOutWeeks[w] ? 'TO' : '')); aoa.push(toRow);
+    let tiRow = ['Try In']; allWeeks.forEach(w => tiRow.push(tryInWeeks[w] ? 'TI' : '')); aoa.push(tiRow);
     let locRow = ['Waktu/Lokasi']; activeMonths.forEach(m => { locRow.push(locations[m] || '', '', '', ''); }); aoa.push(locRow);
-    
-    // PEMETAAN EXCEL BERDASARKAN RENTANG MINGGU BARU
-    let faseRow = ['Fase']; 
-    unifiedPhases.forEach(p => { faseRow.push(p.phase); for(let i=1; i<p.span; i++) faseRow.push(''); }); 
-    aoa.push(faseRow);
-    
-    let subFaseRow = ['Sub Fase']; 
-    unifiedSubPhases.forEach(p => { subFaseRow.push(p.subPhase); for(let i=1; i<p.span; i++) subFaseRow.push(''); }); 
-    aoa.push(subFaseRow);
-    
+    let faseRow = ['Fase']; unifiedPhases.forEach(p => { faseRow.push(p.phase); for(let i=1; i<p.span; i++) faseRow.push(''); }); aoa.push(faseRow);
+    let subFaseRow = ['Sub Fase']; unifiedSubPhases.forEach(p => { subFaseRow.push(p.subPhase); for(let i=1; i<p.span; i++) subFaseRow.push(''); }); aoa.push(subFaseRow);
     let sasaranRow = ['Sasaran Prestasi']; activeMonths.forEach(m => { sasaranRow.push(monthlyObjectives[m] || '', '', '', ''); }); aoa.push(sasaranRow);
-
     aoa.push(['--- BENTUK LATIHAN ---', ...Array(weeksCols).fill('')]);
-    allMaterials.forEach(mat => {
-       let r = [mat];
-       allWeeks.forEach(w => r.push(matrixData[`${w}-${mat}`] ? 'V' : ''));
-       aoa.push(r);
-    });
-
+    allMaterials.forEach(mat => { let r = [mat]; allWeeks.forEach(w => r.push(matrixData[`${w}-${mat}`] ? 'V' : '')); aoa.push(r); });
     aoa.push(['--- TES & EVALUASI ---', ...Array(weeksCols).fill('')]);
-    ['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].forEach(test => {
-       let r = [test];
-       allWeeks.forEach(w => r.push(testSchedule[`${w}-${test}`] ? 'V' : ''));
-       aoa.push(r);
-    });
-
+    ['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].forEach(test => { let r = [test]; allWeeks.forEach(w => r.push(testSchedule[`${w}-${test}`] ? 'V' : '')); aoa.push(r); });
     aoa.push(['--- BEBAN LATIHAN ---', ...Array(weeksCols).fill('')]);
     let volRow = ['Volume']; activeMonths.forEach(m => { volRow.push(macroValues[m]?.vol, '', '', ''); }); aoa.push(volRow);
     let intRow = ['Intensitas']; activeMonths.forEach(m => { intRow.push(macroValues[m]?.int, '', '', ''); }); aoa.push(intRow);
     let peakRow = ['Peak Performance']; activeMonths.forEach(m => { peakRow.push(macroValues[m]?.peak, '', '', ''); }); aoa.push(peakRow);
-
     aoa.push(['--- PROPORSI FAKTOR (%) ---', ...Array(weeksCols).fill('')]);
     let fisRow = ['Fisik (%)']; activeMonths.forEach(m => { fisRow.push(trainingFactors[m]?.fisik, '', '', ''); }); aoa.push(fisRow);
     let tekRow = ['Teknik (%)']; activeMonths.forEach(m => { tekRow.push(trainingFactors[m]?.teknik, '', '', ''); }); aoa.push(tekRow);
     let takRow = ['Taktik (%)']; activeMonths.forEach(m => { takRow.push(trainingFactors[m]?.taktik, '', '', ''); }); aoa.push(takRow);
     let psiRow = ['Psikologis (%)']; activeMonths.forEach(m => { psiRow.push(trainingFactors[m]?.psikis, '', '', ''); }); aoa.push(psiRow);
 
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const merges = [];
-    merges.push({ s: {r:0, c:1}, e: {r:0, c:weeksCols} }); 
-    merges.push({ s: {r:9, c:0}, e: {r:9, c:weeksCols} }); 
-    merges.push({ s: {r:9 + allMaterials.length + 1, c:0}, e: {r:9 + allMaterials.length + 1, c:weeksCols} }); 
-    merges.push({ s: {r:9 + allMaterials.length + 1 + 4 + 1, c:0}, e: {r:9 + allMaterials.length + 1 + 4 + 1, c:weeksCols} }); 
-    merges.push({ s: {r:9 + allMaterials.length + 1 + 4 + 1 + 3 + 1, c:0}, e: {r:9 + allMaterials.length + 1 + 4 + 1 + 3 + 1, c:weeksCols} }); 
-
+    const ws = XLSX.utils.aoa_to_sheet(aoa); const merges = [];
+    merges.push({ s: {r:0, c:1}, e: {r:0, c:weeksCols} });
     activeMonths.forEach((m, i) => {
-      const cStart = 1 + i * 4;
-      const cEnd = cStart + 3;
-      merges.push({ s: {r:1, c:cStart}, e: {r:1, c:cEnd} }); 
-      merges.push({ s: {r:5, c:cStart}, e: {r:5, c:cEnd} }); 
-      merges.push({ s: {r:8, c:cStart}, e: {r:8, c:cEnd} }); 
-      
-      const rStartBeban = 9 + allMaterials.length + 1 + 4 + 1 + 1; 
-      merges.push({ s: {r:rStartBeban, c:cStart}, e: {r:rStartBeban, c:cEnd} });
-      merges.push({ s: {r:rStartBeban+1, c:cStart}, e: {r:rStartBeban+1, c:cEnd} });
-      merges.push({ s: {r:rStartBeban+2, c:cStart}, e: {r:rStartBeban+2, c:cEnd} });
-
-      const rStartFaktor = rStartBeban+3 + 1; 
-      merges.push({ s: {r:rStartFaktor, c:cStart}, e: {r:rStartFaktor, c:cEnd} });
-      merges.push({ s: {r:rStartFaktor+1, c:cStart}, e: {r:rStartFaktor+1, c:cEnd} });
-      merges.push({ s: {r:rStartFaktor+2, c:cStart}, e: {r:rStartFaktor+2, c:cEnd} });
-      merges.push({ s: {r:rStartFaktor+3, c:cStart}, e: {r:rStartFaktor+3, c:cEnd} });
+      const cS = 1 + i * 4; const cE = cS + 3;
+      merges.push({ s: {r:1, c:cS}, e: {r:1, c:cE} }, { s: {r:5, c:cS}, e: {r:5, c:cE} }, { s: {r:8, c:cS}, e: {r:8, c:cE} });
+      const rB = 9 + allMaterials.length + 1 + 4 + 1 + 1; merges.push({ s: {r:rB, c:cS}, e: {r:rB, c:cE} }, { s: {r:rB+1, c:cS}, e: {r:rB+1, c:cE} }, { s: {r:rB+2, c:cS}, e: {r:rB+2, c:cE} });
+      const rF = rB+3 + 1; merges.push({ s: {r:rF, c:cS}, e: {r:rF, c:cE} }, { s: {r:rF+1, c:cS}, e: {r:rF+1, c:cE} }, { s: {r:rF+2, c:cS}, e: {r:rF+2, c:cE} }, { s: {r:rF+3, c:cS}, e: {r:rF+3, c:cE} });
     });
-
-    let currentC = 1;
-    unifiedPhases.forEach(p => {
-      const cEnd = currentC + p.span - 1;
-      if(p.span > 1) merges.push({ s: {r:6, c:currentC}, e: {r:6, c:cEnd} });
-      currentC = cEnd + 1;
-    });
-
-    currentC = 1;
-    unifiedSubPhases.forEach(p => {
-      const cEnd = currentC + p.span - 1;
-      if(p.span > 1) merges.push({ s: {r:7, c:currentC}, e: {r:7, c:cEnd} });
-      currentC = cEnd + 1;
-    });
-
-    ws['!merges'] = merges;
-    XLSX.utils.book_append_sheet(wb, ws, "Matrix_Periodisasi");
-    XLSX.writeFile(wb, `Program_${athleteInfo.name}.xlsx`);
+    let cC = 1; unifiedPhases.forEach(p => { const cE = cC + p.span - 1; if(p.span > 1) merges.push({ s: {r:6, c:cC}, e: {r:6, c:cE} }); cC = cE + 1; });
+    cC = 1; unifiedSubPhases.forEach(p => { const cE = cC + p.span - 1; if(p.span > 1) merges.push({ s: {r:7, c:cC}, e: {r:7, c:cE} }); cC = cE + 1; });
+    ws['!merges'] = merges; XLSX.utils.book_append_sheet(wb, ws, "Matrix_Periodisasi"); XLSX.writeFile(wb, `Program_${athleteInfo.name}.xlsx`);
   };
 
   const printStyles = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' };
 
   return (
-    <div className={`min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px] print:p-0 print:bg-white`} style={printStyles}>
-      
+    <div className="min-h-screen bg-slate-100 p-6 font-sans text-slate-900 text-[11px] print:p-0 print:bg-white" style={printStyles}>
       <style type="text/css">
         {`@media print { @page { size: landscape; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}
       </style>
 
-      {/* --- FAB KONSULTASI & APRESIASI --- */}
+      {/* FAB KONSULTASI */}
       {!isProjectorMode && (
-        <button 
-          onClick={() => setShowCoffeeModal(true)} 
-          className="print:hidden fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white h-14 rounded-full shadow-2xl z-50 flex items-center justify-center px-4 gap-0 hover:gap-3 transition-all duration-300 border-4 border-blue-100 group overflow-hidden"
-          title="Konsultasi & Apresiasi"
-        >
-          <div className="relative flex items-center justify-center">
-            <Coffee className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
-          </div>
-          <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-500 ease-in-out whitespace-nowrap font-black text-xs uppercase tracking-widest">
-            Konsultasi WA
-          </span>
+        <button onClick={() => setShowCoffeeModal(true)} className="print:hidden fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white h-14 rounded-full shadow-2xl z-50 flex items-center justify-center px-4 gap-0 hover:gap-3 transition-all duration-300 border-4 border-blue-100 group overflow-hidden">
+          <div className="relative flex items-center justify-center"><Coffee className="w-6 h-6" /><span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span></div>
+          <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-500 whitespace-nowrap font-black text-xs uppercase tracking-widest">Konsultasi WA</span>
         </button>
       )}
 
-      {/* COFFEE MODAL UNIFIED */}
+      {/* COFFEE MODAL */}
       {showCoffeeModal && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300 no-print">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden text-center relative p-8">
-            <button onClick={() => setShowCoffeeModal(false)} className="absolute top-4 right-4 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 p-2 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
-            <div className="bg-amber-100 text-amber-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><Coffee className="w-8 h-8" /></div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">Traktir Kopi Developer</h3>
-            <p className="text-xs font-bold text-slate-500 mb-6 leading-relaxed normal-case">Terima kasih telah menggunakan aplikasi ini! Dukungan Anda sangat berarti bagi pengembangan fitur selanjutnya.</p>
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6 flex justify-center">
-                <img src={qrisImage} alt="QRIS DANA" className="max-w-[200px] h-auto rounded-xl shadow-sm border border-slate-200" />
-            </div>
-            <a href="https://wa.me/6285340804702?text=Halo%20Developer,%20saya%20ingin%20konsultasi%20mengenai%20Aplikasi%20Periodisasi%20Bompa..." target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-md transition-colors w-full flex items-center justify-center gap-2 text-sm uppercase tracking-widest">
-                Konsultasi WhatsApp
-            </a>
+        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col p-8 text-center relative">
+            <button onClick={() => setShowCoffeeModal(false)} className="absolute top-4 right-4 bg-slate-100 p-2 rounded-xl text-slate-400"><X className="w-5 h-5" /></button>
+            <h3 className="text-xl font-black mb-2">Traktir Kopi Developer</h3>
+            <div className="bg-slate-50 rounded-2xl p-4 mb-6 flex justify-center"><img src={qrisImage} alt="QRIS" className="max-w-[200px] rounded-xl" /></div>
+            <a href="https://wa.me/6285340804702?text=Halo%20Developer..." target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white font-black py-4 rounded-xl w-full uppercase text-sm">Konsultasi WhatsApp</a>
           </div>
         </div>
       )}
 
-      {/* SUB-KOMP HARIAN: MODAL PLANNER */}
-   <DailyModal 
-     showDailyModal={showDailyModal}
-     setShowDailyModal={setShowDailyModal}
-     selectedDay={selectedDay}
-     dailySessions={dailySessions}
-     setDailySessions={setDailySessions}
-     athleteInfo={athleteInfo}
-     t={t}
-   />
+      {/* DAILY MODAL */}
+      <DailyModal showDailyModal={showDailyModal} setShowDailyModal={setShowDailyModal} selectedDay={selectedDay} dailySessions={dailySessions} setDailySessions={setDailySessions} athleteInfo={athleteInfo} t={t} />
 
       {/* TOOLBAR */}
       <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden">
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
-          <Palette className="w-4 h-4 text-slate-400" />
-          <div className="h-4 w-px bg-slate-200 mx-1"></div>
           {Object.entries(THEMES).map(([key, theme]) => (
-            <button key={key} onClick={() => setActiveTheme(key)} className={`w-4 h-4 rounded-full border-2 transition-all ${activeTheme === key ? 'border-slate-900 scale-125' : 'border-transparent hover:scale-110'}`} style={{ backgroundColor: theme.hex }} title={theme.name} />
+            <button key={key} onClick={() => setActiveTheme(key)} className={`w-4 h-4 rounded-full border-2 ${activeTheme === key ? 'border-slate-900 scale-125' : 'border-transparent'}`} style={{ backgroundColor: theme.hex }} />
           ))}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleLoadData} />
-          <button onClick={() => fileInputRef.current.click()} className={`bg-white border px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-sm transition-all uppercase ${t.text} ${t.hoverLight}`}><Upload className="w-3 h-3"/> Buka</button>
-          <button onClick={handleSaveData} className="bg-white border px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-sm hover:bg-green-50 transition-all uppercase text-green-600"><Save className="w-3 h-3"/> Simpan</button>
-          <button onClick={handleExportPNG} className={`text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-md transition-all uppercase ${t.bg} ${t.hoverBg}`}><ImageIcon className="w-3 h-3"/> PNG</button>
-          <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black shadow-md hover:bg-emerald-700 transition-all uppercase"><FileSpreadsheet className="w-3 h-3"/> Excel</button>
-          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2 rounded-xl flex items-center gap-2 font-black shadow-md hover:bg-slate-800 transition-all uppercase"><Download className="w-3 h-3"/> PDF</button>
+          <button onClick={() => fileInputRef.current.click()} className="bg-white border px-4 py-2 rounded-xl font-black text-blue-600 uppercase">Buka</button>
+          <button onClick={handleSaveData} className="bg-white border px-4 py-2 rounded-xl font-black text-green-600 uppercase">Simpan</button>
+          <button onClick={handleExportPNG} className={`text-white px-4 py-2 rounded-xl font-black uppercase ${t.bg}`}>PNG</button>
+          <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black uppercase">Excel</button>
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2 rounded-xl font-black uppercase">PDF</button>
         </div>
       </div>
 
-      <div className="max-w-[1300px] mx-auto bg-white rounded-3xl border shadow-lg relative overflow-hidden print:max-w-none print:border-none print:shadow-none print:rounded-none">
+      {/* MASTER CONTAINER AREA CETAK */}
+      <div ref={reportRef} className="max-w-[1300px] mx-auto bg-white rounded-3xl border shadow-lg p-8 print:p-0 print:shadow-none print:border-none space-y-6">
         
-        {/* ==========================================
-            PANEL KENDALI: 7 LANGKAH WIZARD
-            ========================================== */}
-        <div className="bg-slate-50 border-b border-slate-200 p-6 print:hidden">
-           <h2 className="font-black text-sm uppercase text-slate-800 mb-4 flex items-center gap-2"><Target className={`w-5 h-5 ${t.text}`}/> Control Panel: SOP Pembuatan Periodisasi</h2>
-           
-           <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
-             {[1,2,3,4,5,6,7].map(step => {
-               let stepName = `Langkah ${step}`;
-               if (step === 5) stepName = "5. Beban & Peaking";
-               if (step === 6) stepName = "6. Proporsi Faktor";
-               if (step === 7) stepName = "7. Evaluasi Akhir";
-
-               return (
-                 <button key={step} onClick={() => setActiveStep(step)} className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl border text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${activeStep === step ? `${t.bg} text-white shadow-md border-transparent` : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
-                   {activeStep > step ? <CheckCircle2 className="w-3 h-3"/> : stepName}
-                 </button>
-               );
-             })}
-           </div>
-
-           <div className="bg-white p-5 rounded-2xl border shadow-sm min-h-[160px] flex flex-col justify-between">
-             {activeStep === 1 && (
-               <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">1. Pengaturan Identitas & Total Waktu</h3>
-                 
-                 <div className="grid grid-cols-3 gap-4 mb-4">
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">CABANG OLAHRAGA</label><input value={athleteInfo.cabor} onChange={e => setAthleteInfo({...athleteInfo, cabor: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: ATLETIK"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA ATLET / TIM</label><input value={athleteInfo.name} onChange={e => setAthleteInfo({...athleteInfo, name: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Nama Atlet/Tim"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">USIA / KATEGORI</label><input value={athleteInfo.age} onChange={e => setAthleteInfo({...athleteInfo, age: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: U-19 / Senior"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">PROVINSI / DAERAH</label><input value={athleteInfo.prov} onChange={e => setAthleteInfo({...athleteInfo, prov: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: DKI JAKARTA"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">NAMA PELATIH</label><input value={athleteInfo.coach} onChange={e => setAthleteInfo({...athleteInfo, coach: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Nama Pelatih Utama"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TARGET TAHUNAN</label><input value={athleteInfo.target} onChange={e => setAthleteInfo({...athleteInfo, target: e.target.value})} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" placeholder="Contoh: JUARA PON"/></div>
-                 </div>
-
-                 {/* --- PARAMETER SPORTS SCIENCE PARAM --- */}
-                 <div className="grid grid-cols-3 gap-4 border-t pt-4 mb-4 bg-slate-50 p-4 rounded-xl border">
-                    <div>
-                      <label className="block text-[9px] font-black text-blue-700 mb-1">DURASI MAKSIMAL MINGGUAN (MENIT)</label>
-                      <input type="number" value={athleteInfo.maxDuration || 300} onChange={e => setAthleteInfo({...athleteInfo, maxDuration: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-blue-600" placeholder="Contoh: 300"/>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-black text-amber-700 mb-1">1RM BENCH PRESS / UPPER BODY (KG)</label>
-                      <input type="number" value={athleteInfo.benchPress1RM || 100} onChange={e => setAthleteInfo({...athleteInfo, benchPress1RM: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-amber-600" placeholder="Contoh: 100"/>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-black text-amber-700 mb-1">1RM SQUAT / LOWER BODY (KG)</label>
-                      <input type="number" value={athleteInfo.squat1RM || 100} onChange={e => setAthleteInfo({...athleteInfo, squat1RM: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[10px] font-black text-amber-600" placeholder="Contoh: 100"/>
-                    </div>
-                  </div>
-
-                 <div className="grid grid-cols-3 gap-4 border-t pt-4">
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TAHUN MULAI</label><input type="number" value={startYear} onChange={e => setStartYear(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase" title="Tahun Mulai"/></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN MULAI</label><select value={startMonth} onChange={e => setStartMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m}</option>)}</select></div>
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN SELESAI</label><select value={endMonth} onChange={e => setEndMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m} {startMonth > i ? '(Tahun Depan)' : ''}</option>)}</select></div>
-                 </div>
-
-                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(2)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
-               </div>
-             )}
-             {activeStep === 2 && (
-               <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">2. Pembagian Periode & Fase (%)</h3>
-                 <div className="grid grid-cols-2 gap-6">
-                   <div><label className="block text-[9px] font-bold text-slate-500 mb-1">PROPORSI FASE PERSIAPAN UMUM VS KHUSUS (%)</label><input type="number" value={phaseProps.prep} onChange={e => setPhaseProps({...phaseProps, prep: Number(e.target.value)})} className="w-full border p-2 rounded-lg text-[11px] font-black text-blue-600" title="Contoh: 50 berarti setengah Persiapan Umum, setengah Persiapan Khusus"/></div>
-                 </div>
-                 <p className="text-[9px] font-bold text-slate-400 mt-2 italic">*Aplikasi menggunakan metode Backward Planning. Fase akan dihitung mundur secara otomatis dari Target Minggu Kompetisi Utama Anda.</p>
-                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(3)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
-               </div>
-             )}
-             {activeStep === 3 && (
-               <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">3. Penentuan Peaking & Uji Coba (Spesifik Minggu)</h3>
-                 <div className="grid grid-cols-3 gap-6 h-[340px]">
-                   
-                   {/* PEAK WEEKS GRIDS (Baru) */}
-                   <div className="bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col h-full">
-                   <label className="block text-[9px] font-black text-red-700 mb-2 uppercase tracking-wider">🎯 KOMPETISI UTAMA (BISA LEBIH DARI 1 MINGGU)</label>
-                     <div className="grid grid-cols-2 gap-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                       {activeMonths.map(m => (
-                         <div key={`peak-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center h-fit">
-                           <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
-                           <div className="flex justify-center gap-0.5 flex-wrap">
-                             {[1, 2, 3, 4].map(w => {
-                               const key = `${m}-W${w}`;
-                               const isChecked = competitionWeeks.includes(key);
-                               return (
-                                 <button key={`peak-btn-${key}`} onClick={() => setCompetitionWeeks(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key])} className={`w-5 h-5 text-[8px] font-black rounded transition-all ${isChecked ? 'bg-red-600 text-white shadow-sm' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>
-                                   W{w}
-                                 </button>
-                               );
-                             })}
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-
-                   <div className="col-span-2 flex flex-col gap-3 h-full">
-                     {/* TRY OUT GRIDS */}
-                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex-1 flex flex-col">
-                       <label className="block text-[9px] font-black text-purple-700 mb-2 uppercase tracking-wider">✈️ Try Out / Laga Tandang (Pilih Minggu Spesifik)</label>
-                       <div className="grid grid-cols-4 gap-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                         {activeMonths.map(m => (
-                           <div key={`to-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center h-fit">
-                             <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
-                             <div className="flex justify-center gap-0.5">
-                               {[1, 2, 3, 4].map(w => {
-                                 const key = `${m}-W${w}`;
-                                 const isChecked = !!tryOutWeeks[key];
-                                 return (
-                                   <button key={`to-btn-${key}`} onClick={() => setTryOutWeeks(p => ({ ...p, [key]: !p[key] }))} className={`w-5 h-5 text-[8px] font-black rounded transition-all ${isChecked ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>
-                                     W{w}
-                                   </button>
-                                 );
-                               })}
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-
-                     {/* TRY IN GRIDS */}
-                     <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 flex-1 flex flex-col">
-                       <label className="block text-[9px] font-black text-orange-700 mb-2 uppercase tracking-wider">🏠 Try In / Laga Internal (Pilih Minggu Spesifik)</label>
-                       <div className="grid grid-cols-4 gap-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                         {activeMonths.map(m => (
-                           <div key={`ti-container-${m}`} className="bg-white p-1.5 rounded-lg border text-center h-fit">
-                             <span className="text-[9px] font-black text-slate-700 block mb-1">{m}</span>
-                             <div className="flex justify-center gap-0.5">
-                               {[1, 2, 3, 4].map(w => {
-                                 const key = `${m}-W${w}`;
-                                 const isChecked = !!tryInWeeks[key];
-                                 return (
-                                   <button key={`ti-btn-${key}`} onClick={() => setTryInWeeks(p => ({ ...p, [key]: !p[key] }))} className={`w-5 h-5 text-[8px] font-black rounded transition-all ${isChecked ? 'bg-orange-500 text-white shadow-sm' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'}`}>
-                                     W{w}
-                                   </button>
-                                 );
-                               })}
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-
-                   </div>
-                 </div>
-                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(4)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
-               </div>
-             )}
-             {activeStep === 4 && (
-               <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">4. Masukan Komponen Latihan Tambahan</h3>
-                 <div className="flex gap-2 flex-wrap items-center">
-                   {LOCKED_COMPONENTS.map(c => <span key={c} className="px-3 py-1.5 bg-slate-100 border text-[9px] font-black rounded-lg text-slate-600 uppercase">{c}</span>)}
-                   {materials.filter(m => !LOCKED_COMPONENTS.includes(m)).map(c => (
-                     <span key={c} className={`px-3 py-1.5 border text-[9px] font-black rounded-lg uppercase flex items-center gap-2 ${t.bgLight} ${t.text} ${t.borderLight}`}>
-                       {c} <button onClick={() => removeMaterial(c)} className="text-red-500 hover:text-red-700 focus:outline-none"><X className="w-3 h-3"/></button>
-                     </span>
-                   ))}
-                 </div>
-                 <div className="mt-3 flex gap-2 w-72">
-                   <input type="text" value={materialInput} onChange={e => setMaterialInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMaterial()} className="border p-2 rounded-lg outline-none text-[10px] w-full focus:ring-1" style={{ '--tw-ring-color': t.hex }} placeholder="Ketik materi tambahan (Cth: Servis)..."/>
-                   <button onClick={handleAddMaterial} className={`px-3 rounded-lg text-white font-black ${t.bg} ${t.hoverBg}`}><Plus className="w-4 h-4"/></button>
-                 </div>
-                 <div className="mt-4 flex justify-between items-center">
-                    <p className="text-[9px] font-bold text-slate-400 italic">*Komponen wajib telah dikunci. Anda bisa menambah materi khusus di sini.</p>
-                    <button onClick={() => setActiveStep(5)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button>
-                 </div>
-               </div>
-             )}
-             {activeStep === 5 && (
-                 <div className="animate-in fade-in slide-in-from-bottom-2">
-                   <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">5. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
-                   <p className="text-[9px] font-bold text-slate-500 mb-3">Silakan atur angka parameter beban untuk setiap bulan secara manual. Sistem otomatis mengonversi ke target durasi dan beban nyata.</p>
-                   <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                     {activeMonths.map(m => {
-                      const computedMinutes = Math.round(((macroValues[m]?.vol || 50) / 100) * (athleteInfo.maxDuration || 300));
-                      const computedBP = Math.round(((macroValues[m]?.int || 50) / 100) * (athleteInfo.benchPress1RM || 100));
-                      const computedSquat = Math.round(((macroValues[m]?.int || 50) / 100) * (athleteInfo.squat1RM || 100));
-
-                      return (
-                        <div key={m} className="min-w-[105px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
-                          <span className="text-[9px] font-black uppercase block mb-1 border-b pb-0.5">{m}</span>
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[8px] font-bold text-slate-400">Vol</span>
-                            <input type="number" value={macroValues[m]?.vol} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], vol:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-blue-600 p-0.5" title="Volume"/>
-                          </div>
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[8px] font-bold text-slate-400">Int</span>
-                            <input type="number" value={macroValues[m]?.int} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], int:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-red-600 p-0.5" title="Intensitas"/>
-                          </div>
-                          <div className="flex items-center justify-between gap-1 pb-1">
-                            <span className="text-[8px] font-bold text-slate-400">Peak</span>
-                            <input type="number" min="1" max="5" value={macroValues[m]?.peak} onChange={e=>setMacroValues({...macroValues, [m]:{...macroValues[m], peak:Number(e.target.value)}})} className="w-12 border rounded text-center text-[10px] font-black text-orange-500 p-0.5" title="Peaking (1-5)"/>
-                          </div>
-                          <div className="border-t pt-1 space-y-0.5 text-left bg-white p-1 rounded border border-slate-100 text-[8px] font-black">
-                            <div className="text-blue-700 truncate" title="Target Durasi Mingguan">⏱️ {computedMinutes} m/w</div>
-                            <div className="text-amber-700 truncate" title="Target Tonase Upper Body">🏋️‍♂️ BP: {computedBP}kg</div>
-                            <div className="text-amber-900 truncate" title="Target Tonase Lower Body">🦵 SQ: {computedSquat}kg</div>
-                          </div>
-                        </div>
-                      );
-                     })}
-                   </div>
-                   <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(6)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
-                 </div>
-               )}
-             {activeStep === 6 && (
-               <div className="animate-in fade-in slide-in-from-bottom-2">
-                 <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">6. Proporsi Faktor Latihan (%)</h3>
-                 <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                   {activeMonths.map(m => (
-                     <div key={`fac-${m}`} className="min-w-[100px] bg-slate-50 border p-2 rounded-xl text-center space-y-1">
-                       <span className="text-[9px] font-black uppercase block mb-1">{m}</span>
-                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Fis</span><input type="number" value={trainingFactors[m]?.fisik} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], fisik:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
-                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Tek</span><input type="number" value={trainingFactors[m]?.teknik} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], teknik:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
-                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Tak</span><input type="number" value={trainingFactors[m]?.taktik} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], taktik:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
-                       <div className="flex items-center gap-1"><span className="text-[8px] text-slate-400 font-bold w-6 text-left">Psi</span><input type="number" value={trainingFactors[m]?.psikis} onChange={e=>setTrainingFactors({...trainingFactors, [m]:{...trainingFactors[m], psikis:Number(e.target.value)}})} className="w-full border rounded text-center text-[10px] font-black p-1"/></div>
-                     </div>
-                   ))}
-                 </div>
-                 <div className="mt-4 flex justify-end"><button onClick={() => setActiveStep(7)} className={`px-4 py-2 text-white font-black text-[10px] rounded-lg flex items-center gap-1 ${t.bg} ${t.hoverBg}`}>Lanjut <ArrowRight className="w-3 h-3"/></button></div>
-               </div>
-             )}
-             {activeStep === 7 && (
-               <div className="animate-in fade-in slide-in-from-bottom-2 flex flex-col justify-center items-center h-full gap-4 text-center py-4">
-                 <div>
-                   <h3 className="font-black text-sm text-slate-800 uppercase mb-2">7. Matriks Kalender Siap Dievaluasi</h3>
-                   <p className="text-[10px] font-bold text-slate-500 max-w-md mx-auto">Semua variabel telah diatur. Langkah terakhir adalah menceklis jadwal tes pada matriks kalender, dan mengisi catatan gizi serta menu harian di panel bawah.</p>
-                 </div>
-                 <button onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} className={`px-8 py-3 text-white font-black text-[11px] rounded-xl uppercase flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ${t.bg} ${t.hoverBg}`}>Gulir ke Bawah Untuk Lihat Matriks <ArrowRight className="w-4 h-4"/></button>
-               </div>
-             )}
-           </div>
+        {/* HEADER BRAND */}
+        <div className="flex justify-between items-end border-b-2 pb-4">
+          <div>
+            <h1 className={`text-2xl font-black uppercase ${t.textDark}`}>ANNUAL TRAINING PLAN SYSTEM</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Designed by fiqhipondaa9</p>
+          </div>
+          <table className="text-[10px] font-black uppercase text-slate-700">
+            <tbody>
+              <tr><td>Cabor</td><td>: {athleteInfo.cabor}</td></tr>
+              <tr><td>Tim/Atlet</td><td className="text-blue-900">: {athleteInfo.name}</td></tr>
+              <tr><td>Pelatih</td><td>: {athleteInfo.coach}</td></tr>
+            </tbody>
+          </table>
         </div>
 
         {/* SUB-KOMPONEN: PUSAT KENDALI PROGRAM WIZARD */}
         <ControlPanel 
-          activeStep={activeStep}
-          setActiveStep={setActiveStep}
-          athleteInfo={athleteInfo}
-          setAthleteInfo={setAthleteInfo}
-          startYear={startYear}
-          setStartYear={setStartYear}
-          startMonth={startMonth}
-          setStartMonth={setStartMonth}
-          endMonth={endMonth}
-          setEndMonth={setEndMonth}
-          phaseProps={phaseProps}
-          setPhaseProps={setPhaseProps}
-          activeMonths={activeMonths}
-          competitionWeeks={competitionWeeks}
-          setCompetitionWeeks={setCompetitionWeeks}
-          tryOutWeeks={tryOutWeeks}
-          setTryOutWeeks={setTryOutWeeks}
-          tryInWeeks={tryInWeeks}
-          setTryInWeeks={setTryInWeeks}
-          materials={materials}
-          setMaterials={setMaterials}
-          materialInput={materialInput}
-          setMaterialInput={setMaterialInput}
-          macroValues={macroValues}
-          setMacroValues={setMacroValues}
-          trainingFactors={trainingFactors}
-          setTrainingFactors={setTrainingFactors}
-          setMatrixData={setMatrixData}
-          t={t}
+          activeStep={activeStep} setActiveStep={setActiveStep} athleteInfo={athleteInfo} setAthleteInfo={setAthleteInfo}
+          startYear={startYear} setStartYear={setStartYear} startMonth={startMonth} setStartMonth={setStartMonth}
+          endMonth={endMonth} setEndMonth={setEndMonth} phaseProps={phaseProps} setPhaseProps={setPhaseProps}
+          activeMonths={activeMonths} competitionWeeks={competitionWeeks} setCompetitionWeeks={setCompetitionWeeks}
+          tryOutWeeks={tryOutWeeks} setTryOutWeeks={setTryOutWeeks} tryInWeeks={tryInWeeks} setTryInWeeks={setTryInWeeks}
+          materials={materials} setMaterials={setMaterials} materialInput={materialInput} setMaterialInput={setMaterialInput}
+          macroValues={macroValues} setMacroValues={setMacroValues} trainingFactors={trainingFactors} setTrainingFactors={setTrainingFactors}
+          setMatrixData={setMatrixData} t={t}
         />
 
-        {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
-        <div className="grid grid-cols-2 gap-8 mb-8 print:hidden px-6 mt-8">
-          {/* SUB-KOMPONEN: GRAFIK TEMPLATE SIKLUS MIKRO AKTIF */}
-   <MicrocyclePanel 
-     microType={microType}
-     setMicroType={setMicroType}
-     dailySessions={dailySessions}
-     setSelectedDay={setSelectedDay}
-     setShowDailyModal={setShowDailyModal}
-     t={t}
-   />
+        {/* SUB-KOMPONEN FINAL: MATRIKS KALENDER PERIODISASI TAHUNAN */}
+        <PeriodizationTable 
+          activeMonths={activeMonths} competitionWeeks={competitionWeeks} tryOutWeeks={tryOutWeeks} tryInWeeks={tryInWeeks}
+          materials={materials} macroValues={macroValues} trainingFactors={trainingFactors} matrixData={matrixData}
+          setMatrixData={setMatrixData} athleteInfo={athleteInfo} terminology={terminology} testSchedule={testSchedule} setTestSchedule={setTestSchedule} t={t}
+        />
 
-          <div className="space-y-6">
-            {/* SUB-KOMPONEN: EVALUASI FISIK ATLET */}
-<EvaluationPanel evaluation={evaluation} setEvaluation={setEvaluation} t={t} />
+        {/* GRAFIK DINAMIKA MAKRO MINGGUAN */}
+        <div className="h-56 w-full bg-slate-50 p-4 rounded-2xl border">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fontStyle: 'bold', fontSize: 9 }} />
+              <RechartsTooltip />
+              {peakMonthsForChart.map((pm, i) => (
+                <ReferenceLine key={`ref-${i}`} x={pm} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'PEAK', fill: '#ef4444', fontSize: 10, fontWeight: 'black' }} />
+              ))}
+              <Area type="monotone" dataKey="Peak" fill="#fef08a" stroke="#eab308" opacity={0.2} />
+              <Line type="monotone" name="Intensitas" dataKey="Intensitas" stroke="#ef4444" strokeWidth={3} />
+              <Line type="monotone" name="Volume" dataKey="Volume" stroke="#3b82f6" strokeWidth={3} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
 
-            {/* SUB-KOMPONEN: CATATAN GIZI & MEDIS */}
-<NutritionPanel nutritionNote={nutritionNote} setNutritionNote={setNutritionNote} />
-
+        {/* PANEL BAWAH GRID LAYOUT */}
+        <div className="grid grid-cols-2 gap-6 print:hidden">
+          <MicrocyclePanel microType={microType} setMicroType={setMicroType} dailySessions={dailySessions} setSelectedDay={setSelectedDay} setShowDailyModal={setShowDailyModal} t={t} />
+          <div className="space-y-4 flex flex-col">
+            <EvaluationPanel evaluation={evaluation} setEvaluation={setEvaluation} t={t} />
+            <NutritionPanel nutritionNote={nutritionNote} setNutritionNote={setNutritionNote} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-8 px-6 print:hidden">
-           
-           {/* SUB-KOMPONEN: MODUL BIOMOTORIK */}
-<BiomotorPanel athleteInfo={athleteInfo} t={t} />
-             
-             {/* SUB-KOMPONEN: ASESMEN PSIKOLOGI */}
-        <PsychologicalPanel mentalData={mentalData} setMentalData={setMentalData} t={t} />
 
-        {/* FOOTER HAK CIPTA */}
-        <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center opacity-50 px-8 pb-4 print:hidden">
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic print:text-black">ANNUAL TRAINING PLAN SYSTEM | Designed by fiqhipondaa9</p>
-           <div className="flex gap-4 items-center no-print">
-              <Globe className="w-3 h-3 text-slate-400"/><select value={terminology} onChange={e => setTerminology(e.target.value)} className="bg-transparent font-black outline-none uppercase text-[9px] cursor-pointer text-slate-400"><option value="Eropa">Mazhab Eropa</option><option value="Amerika">Mazhab Amerika</option></select>
-           </div>
+        <div className="grid grid-cols-2 gap-6 print:hidden">
+          <BiomotorPanel athleteInfo={athleteInfo} t={t} />
+          <PsychologicalPanel mentalData={mentalData} setMentalData={setMentalData} t={t} />
         </div>
       </div>
-      </div>
-      </div>
-      );
+    </div>
+  );
 };
 
 export default App;
