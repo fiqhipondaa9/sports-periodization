@@ -6,6 +6,7 @@ import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
 import NutritionPanel from "./NutritionPanel";
 import EvaluationPanel from "./EvaluationPanel";
+import MicrocyclePanel from "./MicrocyclePanel";
 import { toPng } from 'html-to-image';
 import * as XLSX from 'xlsx';
 import qrisImage from './assets/shareqr.png';
@@ -23,13 +24,6 @@ const THEMES = {
   indigo: { id: 'indigo', name: 'Indigo', hex: '#6366f1', bg: 'bg-indigo-600', text: 'text-indigo-600', textDark: 'text-indigo-900', bgLight: 'bg-indigo-50', borderLight: 'border-indigo-100', hoverBg: 'hover:bg-indigo-700', hoverLight: 'hover:bg-indigo-50' },
   cyan: { id: 'cyan', name: 'Cyan', hex: '#06b6d4', bg: 'bg-cyan-600', text: 'text-cyan-600', textDark: 'text-cyan-900', bgLight: 'bg-cyan-50', borderLight: 'border-cyan-100', hoverBg: 'hover:bg-cyan-700', hoverLight: 'hover:bg-cyan-50' },
   zinc: { id: 'zinc', name: 'Zinc', hex: '#52525b', bg: 'bg-zinc-600', text: 'text-zinc-600', textDark: 'text-zinc-900', bgLight: 'bg-zinc-50', borderLight: 'border-zinc-100', hoverBg: 'hover:bg-zinc-700', hoverLight: 'hover:bg-zinc-50' }
-};
-
-const microTypesDesc = {
-  'Developmental': 'Peningkatan adaptasi fungsional, keterampilan, & kualitas biomotor.',
-  'Shock': 'Kelebihan beban terencana (planned overreaching) untuk efek tertunda.',
-  'Regeneration': 'Pemulihan aktif, meredakan ketegangan saraf & membuang laktat.',
-  'Peaking / Unloading': 'Pembongkaran beban (Tapering) menuju superkompensasi puncak.'
 };
 
 const PrintSafeCheckbox = ({ checked, onChange, colorHex }) => (
@@ -973,37 +967,15 @@ const App = () => {
 
         {/* PANEL BAWAH: MIKROSIKLUS & BIOMOTORIK */}
         <div className="grid grid-cols-2 gap-8 mb-8 print:hidden px-6 mt-8">
-          <div className="border p-6 rounded-3xl bg-white shadow-sm flex flex-col justify-between border-slate-200">
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className={`font-black uppercase flex items-center gap-2 tracking-tighter ${t.textDark}`}><BarChart2 className="w-4 h-4"/> Template Siklus Mikro Aktif</h2>
-              </div>
-              <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[9px] font-black uppercase text-slate-400">Tipe Minggu Latihan:</span>
-                  <select value={microType} onChange={(e) => setMicroType(e.target.value)} className={`flex-1 bg-transparent text-[11px] font-black outline-none cursor-pointer uppercase ${t.text}`}>
-                    {Object.keys(microTypesDesc).map(k => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                </div>
-                <p className="text-[9px] font-bold text-slate-500 italic">{microTypesDesc[microType]}</p>
-              </div>
-              <div className="h-40 mb-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={Object.entries(dailySessions).map(([day, s]) => ({day, val: (s.morning.menu ? 50 : 0) + (s.afternoon.menu ? 50 : 0)}))} onClick={d => { if(d.activeLabel) { setSelectedDay(d.activeLabel); setShowDailyModal(true); } }}>
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold'}}/>
-                    <YAxis hide domain={[0, 100]}/>
-                    <Bar isAnimationActive={false} dataKey="val" radius={[8, 8, 0, 0]} barSize={40} cursor="pointer">
-                      {Object.entries(dailySessions).map(([day, s], idx) => <Cell key={idx} fill={s.morning.menu && s.afternoon.menu ? t.hex : s.morning.menu || s.afternoon.menu ? '#eab308' : '#f1f5f9'} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div className="mt-2 p-3 bg-green-50 rounded-xl border border-green-100 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600 flex-shrink-0"/>
-              <span className="text-[9px] font-bold text-green-700 leading-tight">Klik batang grafik untuk menyusun menu. Grafik ini bertindak sebagai kerangka/template harian bagi pelatih asisten.</span>
-            </div>
-          </div>
+          {/* SUB-KOMPONEN: GRAFIK TEMPLATE SIKLUS MIKRO AKTIF */}
+   <MicrocyclePanel 
+     microType={microType}
+     setMicroType={setMicroType}
+     dailySessions={dailySessions}
+     setSelectedDay={setSelectedDay}
+     setShowDailyModal={setShowDailyModal}
+     t={t}
+   />
 
           <div className="space-y-6">
             {/* SUB-KOMPONEN: EVALUASI FISIK ATLET */}
