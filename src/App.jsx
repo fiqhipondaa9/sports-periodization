@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Download, Globe, Save, Upload, FileSpreadsheet, Image as ImageIcon, Coffee } from 'lucide-react';
+import { Download, Globe, Save, Upload, FileSpreadsheet, Image as ImageIcon, Coffee, X } from 'lucide-react';
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
