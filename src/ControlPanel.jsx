@@ -63,10 +63,14 @@ const ControlPanel = ({
        
        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
          {[1,2,3,4,5,6,7].map(step => {
-           let stepName = `Langkah ${step}`;
-           if (step === 5) stepName = "5. Beban & Peaking";
-           if (step === 6) stepName = "6. Proporsi Faktor";
-           if (step === 7) stepName = "7. Evaluasi Akhir";
+           let stepName = '';
+            if (step === 1) stepName = "1. Identitas & Waktu";
+            if (step === 2) stepName = "2. Pembagian Fase";
+            if (step === 3) stepName = "3. Peaking & Uji Coba";
+            if (step === 4) stepName = "4. Komponen Latihan";
+            if (step === 5) stepName = "5. Beban & Peaking";
+            if (step === 6) stepName = "6. Proporsi Faktor";
+            if (step === 7) stepName = "7. Evaluasi Akhir";
 
            return (
              <button 

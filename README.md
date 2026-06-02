@@ -1,16 +1,42 @@
-# React + Vite
+# 🏋️ Annual Training Plan System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplikasi digital untuk menyusun **Program Periodisasi Tahunan** berbasis metode **Tudor Bompa** — dirancang khusus untuk pelatih olahraga Indonesia.
 
-Currently, two official plugins are available:
+## Fitur Utama
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Backward Planning** — Fase dihitung otomatis mundur dari target minggu kompetisi.
+- **7-Step Wizard** — SOP pembuatan periodisasi dalam 7 langkah terstruktur.
+- **Matriks Kalender Visual** — Centang komponen latihan per minggu secara interaktif.
+- **Grafik Dinamika Beban** — Volume, Intensitas, dan Peak Index pada dual Y-axis.
+- **Panel Biomotorik** — Panduan Strength, Endurance, Speed berdasarkan fase Bompa.
+- **Asesmen Psikologi** — Input skor mental atlet (6 parameter).
+- **Siklus Mikro Harian** — Template sesi pagi/sore dengan kalkulasi 1RM otomatis.
+- **Evaluasi Tes Fisik** — Mode waktu/skor dengan grade otomatis (Excellent/Good/Poor).
+- **Tes & Evaluasi di Tabel** — Jadwal Tes Kesehatan, Fisik, Teknik, Psikis per minggu.
+- **Multi-Theme** — 9 pilihan tema warna untuk personalisasi.
+- **Toggle Terminologi** — Mazhab Eropa (Preparasi/Kompetisi) vs Amerika (Macro/Mesocycle).
+- **Mode Proyektor** — Sembunyikan panel kontrol untuk presentasi di depan kelas.
+- **Export** — PNG, Excel (`.xlsx`), dan PDF (cetak) dalam satu klik.
+- **Save/Load** — Simpan dan muat file JSON untuk melanjutkan pekerjaan.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 18** + **Vite**
+- **Tailwind CSS 4**
+- **Recharts** — Grafik interaktif
+- **lucide-react** — Ikon
+- **html-to-image** — Export PNG
+- **SheetJS (xlsx)** — Export Excel
 
-## Expanding the ESLint configuration
+## Cara Menjalankan
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+Buka `http://localhost:5173` di browser.
+
+## Lisensi
+
+Designed by **fiqhipondaa9** — Hak Cipta Dilindungi.

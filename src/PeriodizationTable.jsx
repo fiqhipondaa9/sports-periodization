@@ -13,6 +13,8 @@ const PeriodizationTable = ({
   trainingFactors,
   matrixData,
   setMatrixData,
+  testSchedule,
+  setTestSchedule,
   athleteInfo,
   terminology,
   t
@@ -168,6 +170,28 @@ const PeriodizationTable = ({
                     key={`td-matrix-${key}`} 
                     onClick={() => setMatrixData(prev => ({ ...prev, [key]: !prev[key] }))} 
                     className={`p-2 border border-slate-200 text-center cursor-pointer transition-all select-none ${isChecked ? `${t.bg} text-white font-black shadow-sm` : 'hover:bg-slate-100 text-slate-300 font-normal'}`}
+                  >
+                    {isChecked ? '✓' : '-'}
+                  </td>
+                );
+              }))}
+            </tr>
+          ))}
+          {/* BARIS TES & EVALUASI */}
+          <tr className="bg-slate-100"><td colSpan={1 + activeMonths.length * 4} className="p-1.5 border border-slate-300 font-black text-[8px] text-slate-500 uppercase tracking-widest">Jadwal Tes & Evaluasi (Klik untuk ceklis)</td></tr>
+          {['Tes Kesehatan', 'Tes Fisik', 'Tes Teknik', 'Tes Psikis'].map(testName => (
+            <tr key={`tr-test-${testName}`} className="hover:bg-slate-50">
+              <td className="p-2 border border-slate-200 text-left font-black uppercase text-slate-800 shadow-sm sticky left-0 bg-white z-10 truncate max-w-[160px]">
+                {testName === 'Tes Kesehatan' && '🩺'} {testName === 'Tes Fisik' && '🏃'} {testName === 'Tes Teknik' && '🎯'} {testName === 'Tes Psikis' && '🧠'} {testName}
+              </td>
+              {activeMonths.map(m => [1,2,3,4].map(w => {
+                const key = `${m}-W${w}-${testName}`;
+                const isChecked = !!(testSchedule && testSchedule[key]);
+                return (
+                  <td
+                    key={`td-test-${key}`}
+                    onClick={() => setTestSchedule(prev => ({ ...prev, [key]: !prev[key] }))}
+                    className={`p-2 border border-slate-200 text-center cursor-pointer transition-all select-none ${isChecked ? 'bg-amber-500 text-white font-black shadow-sm' : 'hover:bg-slate-100 text-slate-300 font-normal'}`}
                   >
                     {isChecked ? '✓' : '-'}
                   </td>

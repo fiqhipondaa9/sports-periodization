@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Download, Globe, Save, Upload, FileSpreadsheet, Image as ImageIcon, Coffee, X } from 'lucide-react';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
+import { Coffee, X, CheckCircle, AlertTriangle, Monitor, Globe } from 'lucide-react';
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
@@ -57,8 +57,7 @@ const App = () => {
   const [tryOutWeeks, setTryOutWeeks] = useState({});
   const [tryInWeeks, setTryInWeeks] = useState({});
 
-  const tryOutMonths = useMemo(() => [], []);
-  const tryInMonths = useMemo(() => [], []);
+  // tryOutMonths & tryInMonths dihapus — tidak digunakan
 
   const [locations, setLocations] = useState({});
   const [monthlyObjectives, setMonthlyObjectives] = useState(months.reduce((acc, m) => ({ ...acc, [m]: '' }), {}));
@@ -71,6 +70,12 @@ const App = () => {
   const [testSchedule, setTestSchedule] = useState({});
   
   const [microType, setMicroType] = useState('Developmental');
+  const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
   const [showDailyModal, setShowDailyModal] = useState(false);
   const [showCoffeeModal, setShowCoffeeModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState('Sen');
@@ -160,7 +165,7 @@ const App = () => {
         const d = JSON.parse(ev.target.result);
         if(d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
         if(d.startYear) setStartYear(d.startYear);
-        if(d.athleteInfo) setAthleteInfo({...athleteInfo, ...d.athleteInfo}); 
+        if(d.athleteInfo) setAthleteInfo({...athleteInfo, ...d.athleteInfo});
         if(d.startMonth !== undefined) setStartMonth(d.startMonth);
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
         if(d.phaseProps) setPhaseProps(d.phaseProps);
@@ -177,17 +182,21 @@ const App = () => {
         if(d.dailySessions) setDailySessions(d.dailySessions);
         if(d.nutritionNote) setNutritionNote(d.nutritionNote);
         if(d.evaluation) setEvaluation(d.evaluation);
-        if(d.mentalData) setMentalData(d.mentalData); 
-        alert("Data Periodisasi Bompa Berhasil Dimuat!");
-      } catch (err) { alert("Format file salah atau rusak!"); }
+        if(d.mentalData) setMentalData(d.mentalData);
+        if(d.microType) setMicroType(d.microType);
+        if(d.terminology) setTerminology(d.terminology);
+        showToast(`✅ Data "${file.name}" berhasil dimuat!`, 'success');
+      } catch (err) { showToast('❌ Format file salah atau rusak!', 'error'); }
     };
     reader.readAsText(file); e.target.value = null;
   };
 
   const handleSaveData = () => {
-    const data = { activeTheme, startYear, athleteInfo, startMonth, endMonth, phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations, monthlyObjectives, macroValues, trainingFactors, matrixData, testSchedule, materials, dailySessions, nutritionNote, evaluation, mentalData };
+    const data = { activeTheme, startYear, athleteInfo, startMonth, endMonth, phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations, monthlyObjectives, macroValues, trainingFactors, matrixData, testSchedule, materials, dailySessions, nutritionNote, evaluation, mentalData, microType, terminology };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Periodisasi_${athleteInfo.name}.json`; a.click();
+    const filename = `Periodisasi_${athleteInfo.name || 'Program'}.json`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    showToast(`💾 File "${filename}" berhasil disimpan!`, 'success');
   };
 
   const handleExportPNG = async () => {
@@ -209,7 +218,7 @@ const App = () => {
          scrollContainer.style.overflow = '';
       }
       const link = document.createElement('a'); link.href = dataUrl; link.download = `Periodisasi_${athleteInfo.name || 'Plan'}.png`; link.click();
-    } catch (error) { alert("Proses PNG gagal: " + error.message); }
+    } catch (error) { showToast('❌ Proses PNG gagal: ' + error.message, 'error'); }
   };
 
   const handleExportExcel = () => {
@@ -258,6 +267,19 @@ const App = () => {
         {`@media print { @page { size: landscape; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}
       </style>
 
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className={`print:hidden fixed top-6 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-white text-[11px] font-black uppercase tracking-wide transition-all animate-in fade-in slide-in-from-top-4 duration-300 ${
+          toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+        }`}>
+          {toast.type === 'success'
+            ? <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+          <span>{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
       {/* FAB KONSULTASI */}
       {!isProjectorMode && (
         <button onClick={() => setShowCoffeeModal(true)} className="print:hidden fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white h-14 rounded-full shadow-2xl z-50 flex items-center justify-center px-4 gap-0 hover:gap-3 transition-all duration-300 border-4 border-blue-100 group overflow-hidden">
@@ -283,10 +305,31 @@ const App = () => {
 
       {/* TOOLBAR */}
       <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden">
-        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
-          {Object.entries(THEMES).map(([key, theme]) => (
-            <button key={key} onClick={() => setActiveTheme(key)} className={`w-4 h-4 rounded-full border-2 ${activeTheme === key ? 'border-slate-900 scale-125' : 'border-transparent'}`} style={{ backgroundColor: theme.hex }} />
-          ))}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* PILIHAN TEMA WARNA */}
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+            {Object.entries(THEMES).map(([key, theme]) => (
+              <button key={key} onClick={() => setActiveTheme(key)} className={`w-4 h-4 rounded-full border-2 ${activeTheme === key ? 'border-slate-900 scale-125' : 'border-transparent'}`} style={{ backgroundColor: theme.hex }} />
+            ))}
+          </div>
+          {/* TOGGLE MAZHAB TERMINOLOGI */}
+          <button
+            onClick={() => setTerminology(t => t === 'Eropa' ? 'Amerika' : 'Eropa')}
+            title="Ganti terminologi fase (Eropa/Amerika)"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm text-[9px] font-black uppercase transition-all ${terminology === 'Eropa' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            {terminology === 'Eropa' ? 'Eropa (Prep/Komp)' : 'Amerika (Macro/Meso)'}
+          </button>
+          {/* TOGGLE MODE PROYEKTOR */}
+          <button
+            onClick={() => setIsProjectorMode(prev => !prev)}
+            title="Mode Proyektor: sembunyikan panel kontrol untuk presentasi"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm text-[9px] font-black uppercase transition-all ${isProjectorMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-600'}`}
+          >
+            <Monitor className="w-3.5 h-3.5" />
+            {isProjectorMode ? 'Mode Proyektor ON' : 'Mode Proyektor'}
+          </button>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleLoadData} />
@@ -296,6 +339,7 @@ const App = () => {
           <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black uppercase">Excel</button>
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2 rounded-xl font-black uppercase">PDF</button>
         </div>
+
       </div>
 
       {/* MASTER CONTAINER AREA CETAK */}
@@ -336,20 +380,90 @@ const App = () => {
         />
 
         {/* GRAFIK DINAMIKA MAKRO MINGGUAN */}
-        <div className="h-56 w-full bg-slate-50 p-4 rounded-2xl border">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" tick={{ fontStyle: 'bold', fontSize: 9 }} />
-              <RechartsTooltip />
-              {peakMonthsForChart.map((pm, i) => (
-                <ReferenceLine key={`ref-${i}`} x={pm} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'PEAK', fill: '#ef4444', fontSize: 10, fontWeight: 'black' }} />
-              ))}
-              <Area type="monotone" dataKey="Peak" fill="#fef08a" stroke="#eab308" opacity={0.2} />
-              <Line type="monotone" name="Intensitas" dataKey="Intensitas" stroke="#ef4444" strokeWidth={3} />
-              <Line type="monotone" name="Volume" dataKey="Volume" stroke="#3b82f6" strokeWidth={3} />
-            </ComposedChart>
-          </ResponsiveContainer>
+        <div className="bg-slate-50 p-4 rounded-2xl border">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Grafik Dinamika Beban Makro</p>
+            <div className="flex items-center gap-4 text-[8px] font-black uppercase">
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block"></span> Volume (%)</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-red-500 inline-block"></span> Intensitas (%)</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 bg-yellow-300 border border-yellow-400 inline-block rounded-sm"></span> Peak Index (1–5) →</span>
+            </div>
+          </div>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 4, right: 40, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fontWeight: 'bold', fontSize: 9 }} />
+                {/* Sumbu kiri: Volume & Intensitas (0–100%) */}
+                <YAxis
+                  yAxisId="left"
+                  domain={[0, 100]}
+                  tick={{ fontSize: 8, fontWeight: 'bold', fill: '#64748b' }}
+                  tickFormatter={(v) => `${v}%`}
+                  width={32}
+                />
+                {/* Sumbu kanan: Indeks Peak (0–5) */}
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={[0, 5]}
+                  ticks={[0, 1, 2, 3, 4, 5]}
+                  tick={{ fontSize: 8, fontWeight: 'bold', fill: '#ca8a04' }}
+                  tickFormatter={(v) => v === 0 ? '' : `P${v}`}
+                  width={28}
+                />
+                <RechartsTooltip
+                  contentStyle={{ fontSize: '10px', fontWeight: 'bold', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                  formatter={(value, name) => {
+                    if (name === 'Peak Index') return [`${value} / 5`, 'Peak Index'];
+                    return [`${value}%`, name];
+                  }}
+                />
+                {peakMonthsForChart.map((pm, i) => (
+                  <ReferenceLine
+                    key={`ref-${i}`}
+                    yAxisId="left"
+                    x={pm}
+                    stroke="#ef4444"
+                    strokeDasharray="5 5"
+                    label={{ value: '🏆 PEAK', fill: '#ef4444', fontSize: 9, fontWeight: 'bold', position: 'insideTopLeft' }}
+                  />
+                ))}
+                {/* Area Peak — sumbu KANAN, skala 1–5 */}
+                <Area
+                  yAxisId="right"
+                  type="monotone"
+                  name="Peak Index"
+                  dataKey="Peak"
+                  fill="#fef08a"
+                  stroke="#eab308"
+                  strokeWidth={2}
+                  fillOpacity={0.5}
+                  dot={{ r: 3, fill: '#ca8a04', strokeWidth: 0 }}
+                />
+                {/* Line Intensitas — sumbu KIRI, skala 0–100% */}
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  name="Intensitas"
+                  dataKey="Intensitas"
+                  stroke="#ef4444"
+                  strokeWidth={3}
+                  dot={{ r: 3, fill: '#ef4444', strokeWidth: 0 }}
+                />
+                {/* Line Volume — sumbu KIRI, skala 0–100% */}
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  name="Volume"
+                  dataKey="Volume"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* PANEL BAWAH GRID LAYOUT */}

@@ -29,7 +29,7 @@ const PsychologicalPanel = ({ mentalData, setMentalData, t }) => {
               <input 
                 type="number" 
                 min="1" 
-                max="9" 
+                max="10" 
                 value={item.score} 
                 onChange={e => { 
                   const newData = mentalData.map((m, i) => i === idx ? { ...m, score: Number(e.target.value) } : m); 
