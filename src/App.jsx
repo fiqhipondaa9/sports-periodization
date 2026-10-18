@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { Coffee, X, CheckCircle, AlertTriangle, Monitor, Globe, RotateCcw } from 'lucide-react';
+import { Coffee, X, CheckCircle, AlertTriangle, Monitor, Globe, RotateCcw, Users, UserPlus, Copy, Trash2, Download, Printer } from 'lucide-react';
+import jsPDF from 'jspdf';
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
@@ -16,6 +17,7 @@ import qrisImage from './assets/shareqr.png';
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const LOCKED_COMPONENTS = ['Endurance', 'Strength', 'Speed', 'Fleksibilitas', 'Teknik Dasar', 'Teknik Lanjutan', 'Mental / Psikologis'];
 const STORAGE_KEY = 'sports_periodization_plan_v1';
+const SQUAD_STORAGE_KEY = 'sports_periodization_squad_v1';
 
 const THEMES = {
   blue: { id: 'blue', name: 'Blue', hex: '#3b82f6', bg: 'bg-blue-600', text: 'text-blue-600', textDark: 'text-blue-900', bgLight: 'bg-blue-50', borderLight: 'border-blue-100', hoverBg: 'hover:bg-blue-700', hoverLight: 'hover:bg-blue-50' },
@@ -42,6 +44,9 @@ const App = () => {
   const [chartViewMode, setChartViewMode] = useState('weekly'); // 'weekly' | 'monthly'
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [squadList, setSquadList] = useState([]);
+  const [showSquadModal, setShowSquadModal] = useState(false);
+  const [activeAthleteId, setActiveAthleteId] = useState('main');
   
   const [athleteInfo, setAthleteInfo] = useState({ 
     cabor: 'edit', 
@@ -418,6 +423,188 @@ const App = () => {
     ws['!merges'] = merges; XLSX.utils.book_append_sheet(wb, ws, "Matrix_Periodisasi"); XLSX.writeFile(wb, `Program_${athleteInfo.name}.xlsx`);
   };
 
+  // EKSPOR PDF LANDSCAPE STANDAR RESMI (A3 LANDSCAPE - ZERO CLIPPING)
+  const handleExportLandscapePDF = async () => {
+    try {
+      showToast('⏳ Memproses dokumen PDF Landscape Resmi...', 'success');
+      const el = reportRef.current; if (!el) return;
+      const scrollContainer = el.querySelector('#periodization-matrix-root');
+      const originalScrollClass = scrollContainer ? scrollContainer.className : '';
+      const originalElWidth = el.style.width;
+      el.style.width = '1450px'; 
+      if (scrollContainer) {
+         scrollContainer.style.overflow = 'visible';
+         scrollContainer.classList.remove('overflow-x-auto');
+      }
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const dataUrl = await toPng(el, { backgroundColor: "#ffffff", pixelRatio: 2 });
+      el.style.width = originalElWidth;
+      if (scrollContainer) {
+         scrollContainer.className = originalScrollClass;
+         scrollContainer.style.overflow = '';
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a3'
+      });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const imgHeight = (imgProps.height * (pdfWidth - 16)) / imgProps.width;
+
+      pdf.addImage(dataUrl, 'PNG', 8, 8, pdfWidth - 16, Math.min(imgHeight, pdfHeight - 16));
+      const cleanFileName = `Periodisasi_${(athleteInfo.name || 'Program').replace(/\s+/g, '_')}_Official_A3.pdf`;
+      pdf.save(cleanFileName);
+      showToast(`📄 PDF "${cleanFileName}" berhasil diunduh!`, 'success');
+    } catch (error) { 
+      showToast('❌ Gagal membuat PDF: ' + error.message, 'error'); 
+    }
+  };
+
+  // SQUAD MANAGEMENT LOGIC
+  useEffect(() => {
+    try {
+      const savedSquad = localStorage.getItem(SQUAD_STORAGE_KEY);
+      if (savedSquad) {
+        const parsed = JSON.parse(savedSquad);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSquadList(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal memuat skuad:", e);
+    }
+  }, []);
+
+  const getFullPlanSnapshot = (overrideInfo = null) => ({
+    id: activeAthleteId,
+    name: overrideInfo?.name || athleteInfo.name || 'Atlet',
+    cabor: overrideInfo?.cabor || athleteInfo.cabor || 'Umum',
+    activeTheme, startYear, startDate, 
+    athleteInfo: overrideInfo || athleteInfo, 
+    startMonth, endMonth, phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, 
+    locations, monthlyObjectives, macroValues, microcycleValues, trainingFactors, 
+    matrixData, testSchedule, materials, dailySessions, nutritionNote, 
+    evaluations, mentalData, microType, terminology
+  });
+
+  const loadPlanFromSnapshot = (d) => {
+    if (d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
+    if (d.startYear) setStartYear(d.startYear);
+    if (d.startDate) setStartDate(d.startDate);
+    if (d.athleteInfo) setAthleteInfo(d.athleteInfo);
+    if (d.startMonth !== undefined) setStartMonth(d.startMonth);
+    if (d.endMonth !== undefined) setEndMonth(d.endMonth);
+    if (d.phaseProps) setPhaseProps(d.phaseProps);
+    if (d.competitionWeeks) setCompetitionWeeks(d.competitionWeeks);
+    if (d.tryOutWeeks) setTryOutWeeks(d.tryOutWeeks);
+    if (d.tryInWeeks) setTryInWeeks(d.tryInWeeks);
+    if (d.locations) setLocations(d.locations);
+    if (d.monthlyObjectives) setMonthlyObjectives(d.monthlyObjectives);
+    if (d.macroValues) setMacroValues(d.macroValues);
+    if (d.microcycleValues) setMicrocycleValues(d.microcycleValues || {});
+    if (d.trainingFactors) setTrainingFactors(d.trainingFactors);
+    if (d.matrixData) setMatrixData(d.matrixData);
+    if (d.testSchedule) setTestSchedule(d.testSchedule);
+    if (d.materials) setMaterials(d.materials);
+    if (d.dailySessions) setDailySessions(d.dailySessions);
+    if (d.nutritionNote) setNutritionNote(d.nutritionNote);
+    if (d.evaluations) setEvaluations(d.evaluations);
+    if (d.mentalData) setMentalData(d.mentalData);
+    if (d.microType) setMicroType(d.microType);
+    if (d.terminology) setTerminology(d.terminology);
+  };
+
+  const handleSwitchAthlete = (targetId) => {
+    const currentSnap = getFullPlanSnapshot();
+    const existingSquad = squadList.length > 0 ? squadList : [currentSnap];
+    const updatedSquad = existingSquad.map(a => a.id === activeAthleteId ? { ...currentSnap, id: activeAthleteId } : a);
+    if (!updatedSquad.some(a => a.id === activeAthleteId)) {
+      updatedSquad.push({ ...currentSnap, id: activeAthleteId });
+    }
+
+    const target = updatedSquad.find(a => a.id === targetId);
+    if (target) {
+      loadPlanFromSnapshot(target);
+      setActiveAthleteId(targetId);
+      setSquadList(updatedSquad);
+      localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updatedSquad));
+      showToast(`👤 Beralih ke atlet: "${target.athleteInfo?.name || target.name}"`, 'success');
+      setShowSquadModal(false);
+    }
+  };
+
+  const handleAddNewAthlete = () => {
+    const newId = `ath-${Date.now()}`;
+    const newName = `Atlet ${squadList.length + 1}`;
+    const currentSnap = getFullPlanSnapshot();
+    const existingSquad = squadList.length > 0 ? squadList : [{ ...currentSnap, id: activeAthleteId }];
+    
+    const newAthleteInfo = {
+      ...athleteInfo,
+      name: newName,
+      target: 'Target Kejuaraan'
+    };
+
+    const newSnap = {
+      ...currentSnap,
+      id: newId,
+      name: newName,
+      athleteInfo: newAthleteInfo,
+      matrixData: {},
+      testSchedule: {}
+    };
+
+    const updatedSquad = [
+      ...existingSquad.map(a => a.id === activeAthleteId ? { ...currentSnap, id: activeAthleteId } : a),
+      newSnap
+    ];
+
+    setSquadList(updatedSquad);
+    localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updatedSquad));
+    loadPlanFromSnapshot(newSnap);
+    setActiveAthleteId(newId);
+    showToast(`✅ Profil baru "${newName}" ditambahkan ke skuad!`, 'success');
+    setShowSquadModal(false);
+  };
+
+  const handleDuplicateAthlete = () => {
+    const newId = `ath-${Date.now()}`;
+    const dupName = `${athleteInfo.name} (Copy)`;
+    const newAthleteInfo = { ...athleteInfo, name: dupName };
+    const currentSnap = getFullPlanSnapshot();
+    const dupSnap = { ...currentSnap, id: newId, name: dupName, athleteInfo: newAthleteInfo };
+    
+    const existingSquad = squadList.length > 0 ? squadList : [{ ...currentSnap, id: activeAthleteId }];
+    const updatedSquad = [...existingSquad, dupSnap];
+
+    setSquadList(updatedSquad);
+    localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updatedSquad));
+    loadPlanFromSnapshot(dupSnap);
+    setActiveAthleteId(newId);
+    showToast(`📋 Program diduplikasi untuk "${dupName}"!`, 'success');
+    setShowSquadModal(false);
+  };
+
+  const handleDeleteAthlete = (idToDelete) => {
+    if (squadList.length <= 1) {
+      alert("Minimal sisakan 1 profil atlet di skuad!");
+      return;
+    }
+    if (window.confirm("Hapus profil atlet ini dari skuad?")) {
+      const updatedSquad = squadList.filter(a => a.id !== idToDelete);
+      setSquadList(updatedSquad);
+      localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updatedSquad));
+      if (activeAthleteId === idToDelete) {
+        loadPlanFromSnapshot(updatedSquad[0]);
+        setActiveAthleteId(updatedSquad[0].id);
+      }
+      showToast('🗑️ Profil atlet dihapus dari skuad', 'success');
+    }
+  };
+
   const printStyles = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' };
 
   return (
@@ -462,6 +649,100 @@ const App = () => {
       {/* DAILY MODAL */}
       <DailyModal showDailyModal={showDailyModal} setShowDailyModal={setShowDailyModal} selectedDay={selectedDay} dailySessions={dailySessions} setDailySessions={setDailySessions} athleteInfo={athleteInfo} t={t} />
 
+      {/* SQUAD MODAL */}
+      {showSquadModal && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col p-6 relative max-h-[85vh] overflow-hidden">
+            <div className="flex items-center justify-between border-b pb-4 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black uppercase text-slate-800 tracking-tight">Manajemen Skuad Atlet</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Kelola beberapa profil atlet dalam satu sistem</p>
+                </div>
+              </div>
+              <button onClick={() => setShowSquadModal(false)} className="bg-slate-100 hover:bg-slate-200 p-2 rounded-xl text-slate-500">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* DAFTAR ATLET */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 mb-4">
+              {(squadList.length > 0 ? squadList : [{ id: activeAthleteId, name: athleteInfo.name, athleteInfo }]).map((ath) => {
+                const isActive = ath.id === activeAthleteId;
+                const athName = ath.athleteInfo?.name || ath.name || 'Tanpa Nama';
+                const athCabor = ath.athleteInfo?.cabor || athleteInfo.cabor;
+                const athTarget = ath.athleteInfo?.target || '-';
+                return (
+                  <div key={ath.id} className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                    isActive ? 'bg-indigo-50/70 border-indigo-300 shadow-sm' : 'bg-slate-50/70 border-slate-200 hover:border-slate-300'
+                  }`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-xs text-slate-800 truncate">{athName}</span>
+                        {isActive && (
+                          <span className="bg-indigo-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                        {athCabor} • Target: {athTarget}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {!isActive ? (
+                        <button
+                          onClick={() => handleSwitchAthlete(ath.id)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm"
+                        >
+                          Pilih
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleDuplicateAthlete}
+                          title="Duplikasi program atlet ini"
+                          className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-1 transition-all"
+                        >
+                          <Copy className="w-3 h-3" /> Duplikat
+                        </button>
+                      )}
+                      {squadList.length > 1 && (
+                        <button
+                          onClick={() => handleDeleteAthlete(ath.id)}
+                          title="Hapus profil atlet ini"
+                          className="bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-rose-500 p-1.5 rounded-xl transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* FOOTER ACTIONS */}
+            <div className="border-t pt-4 flex gap-2">
+              <button
+                onClick={handleAddNewAthlete}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 rounded-2xl uppercase text-[11px] flex items-center justify-center gap-2 shadow-sm transition-all"
+              >
+                <UserPlus className="w-4 h-4" /> + Tambah Profil Baru
+              </button>
+              <button
+                onClick={() => setShowSquadModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-black px-5 py-3 rounded-2xl uppercase text-[11px] transition-all"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TOOLBAR */}
       <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-2 mb-6 print:hidden">
         <div className="flex items-center gap-3 flex-wrap">
@@ -490,6 +771,20 @@ const App = () => {
             {isProjectorMode ? 'Mode Proyektor ON' : 'Mode Proyektor'}
           </button>
 
+          {/* SQUAD / ATLET SWITCHER */}
+          <button
+            type="button"
+            onClick={() => setShowSquadModal(true)}
+            className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm"
+            title="Kelola Skuad & Ganti Atlet"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Skuad: {athleteInfo.name || 'Default'}</span>
+            <span className="bg-indigo-200 text-indigo-900 text-[8px] px-1.5 py-0.5 rounded-full font-bold">
+              {squadList.length > 0 ? squadList.length : 1}
+            </span>
+          </button>
+
           {/* STATUS AUTO-SAVE & RESET */}
           <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -512,7 +807,12 @@ const App = () => {
           <button onClick={handleSaveData} className="bg-white border px-4 py-2 rounded-xl font-black text-green-600 uppercase">Simpan</button>
           <button onClick={handleExportPNG} className={`text-white px-4 py-2 rounded-xl font-black uppercase ${t.bg}`}>PNG</button>
           <button onClick={handleExportExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black uppercase">Excel</button>
-          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2 rounded-xl font-black uppercase">PDF</button>
+          <button onClick={handleExportLandscapePDF} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-black uppercase flex items-center gap-1.5 shadow-sm" title="Unduh PDF Resmi Standar Landscape A3">
+            <Download className="w-3.5 h-3.5" /> PDF A3
+          </button>
+          <button onClick={() => window.print()} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-black uppercase flex items-center gap-1.5 shadow-sm" title="Cetak Browser">
+            <Printer className="w-3.5 h-3.5" /> Cetak
+          </button>
         </div>
 
       </div>

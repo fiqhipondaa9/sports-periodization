@@ -117,10 +117,10 @@ Berdasarkan tinjauan kebutuhan modernisasi aplikasi, ditemukan sejumlah keterbat
 - [x] **Kalkulator Makronutrisi & Gizi Terstruktur:** Kalkulator Sports Nutrition terstruktur (Total Energi kkal, gram Karbohidrat, Protein, dan Hidrasi per kg BB atlet) berbasis fase latihan Tudor Bompa.
 - [x] **Korelasikan Skor Psikologi dengan Kesiapan Tanding:** Indeks Kesiapan Mental Atlet (0-100%), visualisasi progress bar status, dan rekomendasi intervensi psikologis otomatis untuk pilar terendah.
 
-### Fase 3: Kolaborasi & Ekspor Lanjutan (Future Enhancement)
-- [ ] **Penyempurnaan Ekspor PDF:** Format cetak langsung berorientasi *Landscape* standar pelatnas yang memuat seluruh tabel tanpa terpotong.
-- [ ] **Manajemen Multi-Atlet / Skuad:** Kemampuan berganti profil atlet dalam satu akun tanpa harus menimpa data atlet lain.
-- [ ] **Integrasi Monitoring RPE (Rate of Perceived Exertion) & Kelelahan Atlet.**
+### Fase 3: Kolaborasi & Ekspor Lanjutan (Future Enhancement) — ✅ SELESAI
+- [x] **Penyempurnaan Ekspor PDF:** Format ekspor langsung berorientasi *Landscape A3* standar resmi pelatnas/pelatda yang memuat seluruh 52 minggu tanpa terpotong via jsPDF.
+- [x] **Manajemen Multi-Atlet / Skuad:** Sistem manajemen skuad atlet dengan kemampuan berganti profil, menambah profil baru, duplikasi program, dan hapus profil secara instan.
+- [x] **Integrasi Monitoring RPE Foster & Beban Latihan:** Kalkulasi session load (AU = Durasi × Skala RPE Foster 1-10) di Daily Modal dan visualisasi beban mingguan serta indikator risiko overtraining/strain di Microcycle Panel.
 
 ---
 
