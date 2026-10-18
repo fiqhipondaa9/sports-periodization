@@ -50,6 +50,7 @@ const App = () => {
     prov: 'edit', 
     coach: 'edit',
     target: 'edit',
+    weight: 65,
     maxDuration: 300, 
     benchPress1RM: 100,
     squat1RM: 100
@@ -92,7 +93,12 @@ const App = () => {
     { id: 'm4', label: 'Emosi', score: 8 }, { id: 'm5', label: 'Resiliensi', score: 8 }, { id: 'm6', label: 'Disiplin', score: 8 }
   ]);
   
-  const [evaluation, setEvaluation] = useState({ name: 'Tes Fisik Bleep', score: 50, target: 100, isTime: false });
+  const [evaluations, setEvaluations] = useState([
+    { id: 't1', name: 'Bleep Test (VO2Max)', category: 'Endurance', score: 12.5, target: 14.0, unit: 'Level', isTime: false },
+    { id: 't2', name: 'Sprint 20m Acceleration', category: 'Speed', score: 3.12, target: 2.95, unit: 'detik', isTime: true },
+    { id: 't3', name: 'Vertical Jump Test', category: 'Power', score: 62, target: 68, unit: 'cm', isTime: false },
+    { id: 't4', name: 'Agility T-Test', category: 'Agility', score: 10.35, target: 9.80, unit: 'detik', isTime: true }
+  ]);
   const [terminology, setTerminology] = useState('Eropa');
   const [nutritionNote, setNutritionNote] = useState('Input catatan gizi, suplemen, atau berat badan di sini.');
   const [isProjectorMode, setIsProjectorMode] = useState(false);
@@ -133,7 +139,8 @@ const App = () => {
         if (d.materials) setMaterials(d.materials);
         if (d.dailySessions) setDailySessions(d.dailySessions);
         if (d.nutritionNote) setNutritionNote(d.nutritionNote);
-        if (d.evaluation) setEvaluation(d.evaluation);
+        if (d.evaluations) setEvaluations(d.evaluations);
+        else if (d.evaluation) setEvaluations([{ id: 't1', ...d.evaluation }]);
         if (d.mentalData) setMentalData(d.mentalData);
         if (d.microType) setMicroType(d.microType);
         if (d.terminology) setTerminology(d.terminology);
@@ -157,7 +164,7 @@ const App = () => {
         phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations,
         monthlyObjectives, macroValues, microcycleValues, trainingFactors,
         matrixData, testSchedule, materials, dailySessions, nutritionNote,
-        evaluation, mentalData, microType, terminology, lastSavedTime: timeStr
+        evaluations, mentalData, microType, terminology, lastSavedTime: timeStr
       };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -172,7 +179,7 @@ const App = () => {
     phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations,
     monthlyObjectives, macroValues, microcycleValues, trainingFactors,
     matrixData, testSchedule, materials, dailySessions, nutritionNote,
-    evaluation, mentalData, microType, terminology
+    evaluations, mentalData, microType, terminology
   ]);
 
   const handleResetToDefault = () => {
@@ -326,7 +333,8 @@ const App = () => {
         if(d.materials) setMaterials(d.materials);
         if(d.dailySessions) setDailySessions(d.dailySessions);
         if(d.nutritionNote) setNutritionNote(d.nutritionNote);
-        if(d.evaluation) setEvaluation(d.evaluation);
+        if(d.evaluations) setEvaluations(d.evaluations);
+        else if (d.evaluation) setEvaluations([{ id: 't1', ...d.evaluation }]);
         if(d.mentalData) setMentalData(d.mentalData);
         if(d.microType) setMicroType(d.microType);
         if(d.terminology) setTerminology(d.terminology);
@@ -342,7 +350,7 @@ const App = () => {
       phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations, 
       monthlyObjectives, macroValues, microcycleValues, trainingFactors, 
       matrixData, testSchedule, materials, dailySessions, nutritionNote, 
-      evaluation, mentalData, microType, terminology 
+      evaluations, mentalData, microType, terminology 
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const filename = `Periodisasi_${athleteInfo.name || 'Program'}.json`;
@@ -660,8 +668,8 @@ const App = () => {
         <div className="grid grid-cols-2 gap-6 print:hidden">
           <MicrocyclePanel microType={microType} setMicroType={setMicroType} dailySessions={dailySessions} setSelectedDay={setSelectedDay} setShowDailyModal={setShowDailyModal} t={t} />
           <div className="space-y-4 flex flex-col">
-            <EvaluationPanel evaluation={evaluation} setEvaluation={setEvaluation} t={t} />
-            <NutritionPanel nutritionNote={nutritionNote} setNutritionNote={setNutritionNote} />
+            <EvaluationPanel evaluations={evaluations} setEvaluations={setEvaluations} t={t} />
+            <NutritionPanel nutritionNote={nutritionNote} setNutritionNote={setNutritionNote} athleteInfo={athleteInfo} setAthleteInfo={setAthleteInfo} t={t} />
           </div>
         </div>
 

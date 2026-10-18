@@ -112,10 +112,10 @@ Berdasarkan tinjauan kebutuhan modernisasi aplikasi, ditemukan sejumlah keterbat
 - [x] **Microcycle Wave Generator (Pola 3:1 & 2:1 Tudor Bompa):** Generator pola undulasi beban mingguan (Step Loading & Deloading) dengan toggle grafik interaktif mingguan vs bulanan.
 - [x] **Auto-save `localStorage`:** Penyimpanan otomatis saat mengedit data dengan indikator status real-time dan opsi Reset Program.
 
-### Fase 2: Penguatan Modul Sports Science (Medium Priority)
-- [ ] **Baterai Tes Fisik (*Multitest Battery*):** Pelatih dapat menambah beberapa jenis tes fisik sekaligus (Daya Tahan, Kecepatan, Kelincahan, Daya Ledak) dengan grade otomatis per cabor.
-- [ ] **Kalkulator Makronutrisi & Gizi Terstruktur:** Formula perhitungan BMR/TDEE sederhana berdasarkan fase (fase volume tinggi = karbohidrat tinggi, fase kompetisi = pemeliharaan masa otot).
-- [ ] **Korelasikan Skor Psikologi dengan Riwayat Latihan:** Grafik radar psikologis yang dapat disimpan per fase (awal TPU vs menjelang kompetisi).
+### Fase 2: Penguatan Modul Sports Science (Medium Priority) — ✅ SELESAI
+- [x] **Baterai Tes Fisik (*Multitest Battery*):** Multitest terintegrasi dengan template tes cabor (VO2Max, Sprint, Vertical Jump, Agility T-Test, Core Plank, Push-up) dengan skor individual dan Indeks Kebugaran Agregat.
+- [x] **Kalkulator Makronutrisi & Gizi Terstruktur:** Kalkulator Sports Nutrition terstruktur (Total Energi kkal, gram Karbohidrat, Protein, dan Hidrasi per kg BB atlet) berbasis fase latihan Tudor Bompa.
+- [x] **Korelasikan Skor Psikologi dengan Kesiapan Tanding:** Indeks Kesiapan Mental Atlet (0-100%), visualisasi progress bar status, dan rekomendasi intervensi psikologis otomatis untuk pilar terendah.
 
 ### Fase 3: Kolaborasi & Ekspor Lanjutan (Future Enhancement)
 - [ ] **Penyempurnaan Ekspor PDF:** Format cetak langsung berorientasi *Landscape* standar pelatnas yang memuat seluruh tabel tanpa terpotong.
