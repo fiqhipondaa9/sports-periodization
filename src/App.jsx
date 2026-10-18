@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { Coffee, X, CheckCircle, AlertTriangle, Monitor, Globe } from 'lucide-react';
+import { Coffee, X, CheckCircle, AlertTriangle, Monitor, Globe, RotateCcw } from 'lucide-react';
 import DailyModal from './DailyModal';
 import BiomotorPanel from "./BiomotorPanel";
 import PsychologicalPanel from "./PsychologicalPanel";
@@ -15,6 +15,7 @@ import qrisImage from './assets/shareqr.png';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const LOCKED_COMPONENTS = ['Endurance', 'Strength', 'Speed', 'Fleksibilitas', 'Teknik Dasar', 'Teknik Lanjutan', 'Mental / Psikologis'];
+const STORAGE_KEY = 'sports_periodization_plan_v1';
 
 const THEMES = {
   blue: { id: 'blue', name: 'Blue', hex: '#3b82f6', bg: 'bg-blue-600', text: 'text-blue-600', textDark: 'text-blue-900', bgLight: 'bg-blue-50', borderLight: 'border-blue-100', hoverBg: 'hover:bg-blue-700', hoverLight: 'hover:bg-blue-50' },
@@ -36,6 +37,11 @@ const App = () => {
   const t = THEMES[activeTheme];
   const [activeStep, setActiveStep] = useState(1);
   const [startYear, setStartYear] = useState(new Date().getFullYear());
+  const [startDate, setStartDate] = useState(`${new Date().getFullYear()}-01-01`);
+  const [microcycleValues, setMicrocycleValues] = useState({});
+  const [chartViewMode, setChartViewMode] = useState('weekly'); // 'weekly' | 'monthly'
+  const [lastSavedTime, setLastSavedTime] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const [athleteInfo, setAthleteInfo] = useState({ 
     cabor: 'edit', 
@@ -101,6 +107,114 @@ const App = () => {
   const allMaterials = useMemo(() => Array.from(new Set([...LOCKED_COMPONENTS, ...materials])), [materials]);
   const allWeeks = useMemo(() => activeMonths.flatMap(m => [1,2,3,4].map(w => `${m}-W${w}`)), [activeMonths]);
 
+  // LOAD DARI LOCALSTORAGE PADA SAAT PERTAMA KALI MOUNT
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
+        if (d.startYear) setStartYear(d.startYear);
+        if (d.startDate) setStartDate(d.startDate);
+        if (d.athleteInfo) setAthleteInfo(prev => ({ ...prev, ...d.athleteInfo }));
+        if (d.startMonth !== undefined) setStartMonth(d.startMonth);
+        if (d.endMonth !== undefined) setEndMonth(d.endMonth);
+        if (d.phaseProps) setPhaseProps(d.phaseProps);
+        if (d.competitionWeeks) setCompetitionWeeks(d.competitionWeeks);
+        if (d.tryOutWeeks) setTryOutWeeks(d.tryOutWeeks);
+        if (d.tryInWeeks) setTryInWeeks(d.tryInWeeks);
+        if (d.locations) setLocations(d.locations);
+        if (d.monthlyObjectives) setMonthlyObjectives(d.monthlyObjectives);
+        if (d.macroValues) setMacroValues(d.macroValues);
+        if (d.microcycleValues) setMicrocycleValues(d.microcycleValues);
+        if (d.trainingFactors) setTrainingFactors(d.trainingFactors);
+        if (d.matrixData) setMatrixData(d.matrixData);
+        if (d.testSchedule) setTestSchedule(d.testSchedule);
+        if (d.materials) setMaterials(d.materials);
+        if (d.dailySessions) setDailySessions(d.dailySessions);
+        if (d.nutritionNote) setNutritionNote(d.nutritionNote);
+        if (d.evaluation) setEvaluation(d.evaluation);
+        if (d.mentalData) setMentalData(d.mentalData);
+        if (d.microType) setMicroType(d.microType);
+        if (d.terminology) setTerminology(d.terminology);
+        setLastSavedTime(d.lastSavedTime || 'Tersimpan');
+      }
+    } catch (e) {
+      console.warn("Gagal memuat auto-save:", e);
+    } finally {
+      setIsInitialized(true);
+    }
+  }, []);
+
+  // AUTO-SAVE KE LOCALSTORAGE DENGAN DEBOUNCE
+  useEffect(() => {
+    if (!isInitialized) return;
+    const timer = setTimeout(() => {
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      const dataToSave = {
+        activeTheme, startYear, startDate, athleteInfo, startMonth, endMonth,
+        phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations,
+        monthlyObjectives, macroValues, microcycleValues, trainingFactors,
+        matrixData, testSchedule, materials, dailySessions, nutritionNote,
+        evaluation, mentalData, microType, terminology, lastSavedTime: timeStr
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        setLastSavedTime(timeStr);
+      } catch (err) {
+        console.warn("Auto-save error:", err);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [
+    isInitialized, activeTheme, startYear, startDate, athleteInfo, startMonth, endMonth,
+    phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations,
+    monthlyObjectives, macroValues, microcycleValues, trainingFactors,
+    matrixData, testSchedule, materials, dailySessions, nutritionNote,
+    evaluation, mentalData, microType, terminology
+  ]);
+
+  const handleResetToDefault = () => {
+    if (window.confirm("⚠️ Apakah Anda yakin ingin mereset seluruh rencana periodisasi ke kondisi awal? Seluruh perubahan yang belum diekspor akan dikembalikan.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
+    }
+  };
+
+  const applyLoadWavePattern = (pattern) => {
+    if (pattern === 'flat') {
+      setMicrocycleValues({});
+      showToast('🔄 Beban mingguan dikembalikan ke flat bulanan', 'success');
+      return;
+    }
+    const newMicro = { ...microcycleValues };
+    activeMonths.forEach(m => {
+      const baseVol = macroValues[m]?.vol || 50;
+      const baseInt = macroValues[m]?.int || 50;
+      if (pattern === '3:1') {
+        // Tudor Bompa 3:1 Step Loading
+        // W1: Adaptasi/Fondasi (90% vol, 85% int)
+        // W2: Progresi (100% vol, 100% int)
+        // W3: Beban Puncak (110% vol, 115% int)
+        // W4: Deloading/Regenerasi (70% vol, 75% int)
+        newMicro[`${m}-W1`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 0.9))), int: Math.max(10, Math.min(100, Math.round(baseInt * 0.85))) };
+        newMicro[`${m}-W2`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 1.0))), int: Math.max(10, Math.min(100, Math.round(baseInt * 1.0))) };
+        newMicro[`${m}-W3`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 1.1))), int: Math.max(10, Math.min(100, Math.round(baseInt * 1.15))) };
+        newMicro[`${m}-W4`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 0.7))), int: Math.max(10, Math.min(100, Math.round(baseInt * 0.75))) };
+      } else if (pattern === '2:1') {
+        // 2:1 Pattern (Intensif)
+        newMicro[`${m}-W1`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 0.9))), int: Math.max(10, Math.min(100, Math.round(baseInt * 0.9))) };
+        newMicro[`${m}-W2`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 1.1))), int: Math.max(10, Math.min(100, Math.round(baseInt * 1.15))) };
+        newMicro[`${m}-W3`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 0.75))), int: Math.max(10, Math.min(100, Math.round(baseInt * 0.8))) };
+        newMicro[`${m}-W4`] = { vol: Math.max(10, Math.min(100, Math.round(baseVol * 0.85))), int: Math.max(10, Math.min(100, Math.round(baseInt * 0.85))) };
+      }
+    });
+    setMicrocycleValues(newMicro);
+    setChartViewMode('weekly');
+    showToast(`⚡ Pola undulasi beban ${pattern} berhasil diterapkan!`, 'success');
+  };
+
   useEffect(() => {
     const apresiasiTimer = setInterval(() => {
       if (!isProjectorMode) {
@@ -154,8 +268,37 @@ const App = () => {
     }); return subPhases;
   }, [allWeeks, competitionWeeks, phaseProps, activeTheme]);
 
-  const chartData = useMemo(() => activeMonths.map(m => ({ name: m, Intensitas: macroValues[m]?.int || 0, Volume: macroValues[m]?.vol || 0, Peak: macroValues[m]?.peak || 0 })), [activeMonths, macroValues]);
-  const peakMonthsForChart = useMemo(() => [...new Set(competitionWeeks.map(w => w.split('-')[0]))], [competitionWeeks]);
+  // GRAFIK DATA: MENDUKUNG MODE MINGGUAN (UNDULASI) & BULANAN (MAKRO)
+  const chartData = useMemo(() => {
+    if (chartViewMode === 'weekly') {
+      return allWeeks.map(w => {
+        const m = w.split('-')[0];
+        const vol = microcycleValues[w]?.vol !== undefined ? microcycleValues[w].vol : (macroValues[m]?.vol || 0);
+        const int = microcycleValues[w]?.int !== undefined ? microcycleValues[w].int : (macroValues[m]?.int || 0);
+        const isComp = competitionWeeks.includes(w);
+        const peak = isComp ? 5 : (macroValues[m]?.peak || 0);
+        return {
+          name: w,
+          Intensitas: int,
+          Volume: vol,
+          Peak: peak
+        };
+      });
+    }
+    return activeMonths.map(m => ({
+      name: m,
+      Intensitas: macroValues[m]?.int || 0,
+      Volume: macroValues[m]?.vol || 0,
+      Peak: macroValues[m]?.peak || 0
+    }));
+  }, [chartViewMode, allWeeks, activeMonths, macroValues, microcycleValues, competitionWeeks]);
+
+  const peakMonthsForChart = useMemo(() => {
+    if (chartViewMode === 'weekly') {
+      return competitionWeeks;
+    }
+    return [...new Set(competitionWeeks.map(w => w.split('-')[0]))];
+  }, [chartViewMode, competitionWeeks]);
 
   const handleLoadData = (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -165,6 +308,7 @@ const App = () => {
         const d = JSON.parse(ev.target.result);
         if(d.activeTheme && THEMES[d.activeTheme]) setActiveTheme(d.activeTheme);
         if(d.startYear) setStartYear(d.startYear);
+        if(d.startDate) setStartDate(d.startDate);
         if(d.athleteInfo) setAthleteInfo({...athleteInfo, ...d.athleteInfo});
         if(d.startMonth !== undefined) setStartMonth(d.startMonth);
         if(d.endMonth !== undefined) setEndMonth(d.endMonth);
@@ -175,6 +319,7 @@ const App = () => {
         if(d.locations) setLocations(d.locations);
         if(d.monthlyObjectives) setMonthlyObjectives(d.monthlyObjectives);
         if(d.macroValues) setMacroValues(d.macroValues);
+        if(d.microcycleValues) setMicrocycleValues(d.microcycleValues);
         if(d.trainingFactors) setTrainingFactors(d.trainingFactors);
         if(d.matrixData) setMatrixData(d.matrixData);
         if(d.testSchedule) setTestSchedule(d.testSchedule);
@@ -192,7 +337,13 @@ const App = () => {
   };
 
   const handleSaveData = () => {
-    const data = { activeTheme, startYear, athleteInfo, startMonth, endMonth, phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations, monthlyObjectives, macroValues, trainingFactors, matrixData, testSchedule, materials, dailySessions, nutritionNote, evaluation, mentalData, microType, terminology };
+    const data = { 
+      activeTheme, startYear, startDate, athleteInfo, startMonth, endMonth, 
+      phaseProps, competitionWeeks, tryOutWeeks, tryInWeeks, locations, 
+      monthlyObjectives, macroValues, microcycleValues, trainingFactors, 
+      matrixData, testSchedule, materials, dailySessions, nutritionNote, 
+      evaluation, mentalData, microType, terminology 
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const filename = `Periodisasi_${athleteInfo.name || 'Program'}.json`;
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
@@ -330,6 +481,22 @@ const App = () => {
             <Monitor className="w-3.5 h-3.5" />
             {isProjectorMode ? 'Mode Proyektor ON' : 'Mode Proyektor'}
           </button>
+
+          {/* STATUS AUTO-SAVE & RESET */}
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-[9px] font-black uppercase text-emerald-800">
+              {lastSavedTime ? `Tersimpan (${lastSavedTime})` : 'Auto-Save Aktif'}
+            </span>
+          </div>
+          <button 
+            type="button"
+            onClick={handleResetToDefault}
+            title="Reset seluruh form ke kondisi awal"
+            className="flex items-center gap-1 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-slate-200 px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase text-slate-500 transition-all shadow-sm"
+          >
+            <RotateCcw className="w-3 h-3" /> Reset
+          </button>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleLoadData} />
@@ -364,25 +531,48 @@ const App = () => {
         <ControlPanel 
           activeStep={activeStep} setActiveStep={setActiveStep} athleteInfo={athleteInfo} setAthleteInfo={setAthleteInfo}
           startYear={startYear} setStartYear={setStartYear} startMonth={startMonth} setStartMonth={setStartMonth}
-          endMonth={endMonth} setEndMonth={setEndMonth} phaseProps={phaseProps} setPhaseProps={setPhaseProps}
+          endMonth={endMonth} setEndMonth={setEndMonth} startDate={startDate} setStartDate={setStartDate}
+          phaseProps={phaseProps} setPhaseProps={setPhaseProps}
           activeMonths={activeMonths} competitionWeeks={competitionWeeks} setCompetitionWeeks={setCompetitionWeeks}
           tryOutWeeks={tryOutWeeks} setTryOutWeeks={setTryOutWeeks} tryInWeeks={tryInWeeks} setTryInWeeks={setTryInWeeks}
           materials={materials} setMaterials={setMaterials} materialInput={materialInput} setMaterialInput={setMaterialInput}
           macroValues={macroValues} setMacroValues={setMacroValues} trainingFactors={trainingFactors} setTrainingFactors={setTrainingFactors}
-          setMatrixData={setMatrixData} t={t}
+          setMatrixData={setMatrixData} applyLoadWavePattern={applyLoadWavePattern} t={t}
         />
 
         {/* SUB-KOMPONEN FINAL: MATRIKS KALENDER PERIODISASI TAHUNAN */}
         <PeriodizationTable 
           activeMonths={activeMonths} competitionWeeks={competitionWeeks} tryOutWeeks={tryOutWeeks} tryInWeeks={tryInWeeks}
-          materials={materials} macroValues={macroValues} trainingFactors={trainingFactors} matrixData={matrixData}
-          setMatrixData={setMatrixData} athleteInfo={athleteInfo} terminology={terminology} testSchedule={testSchedule} setTestSchedule={setTestSchedule} t={t}
+          materials={materials} macroValues={macroValues} microcycleValues={microcycleValues} trainingFactors={trainingFactors} 
+          matrixData={matrixData} setMatrixData={setMatrixData} athleteInfo={athleteInfo} terminology={terminology} 
+          testSchedule={testSchedule} setTestSchedule={setTestSchedule} startDate={startDate} t={t}
         />
 
         {/* GRAFIK DINAMIKA MAKRO MINGGUAN */}
         <div className="bg-slate-50 p-4 rounded-2xl border">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Grafik Dinamika Beban Makro</p>
+          <div className="flex flex-wrap items-center justify-between mb-2 px-1 gap-2">
+            <div className="flex items-center gap-3">
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                {chartViewMode === 'weekly' ? 'Grafik Dinamika Mikrosiklus Undulasi Mingguan' : 'Grafik Dinamika Beban Makro Bulanan'}
+              </p>
+              {/* TOGGLE VIEW MODE */}
+              <div className="flex items-center bg-slate-200 p-0.5 rounded-lg border border-slate-300">
+                <button 
+                  type="button" 
+                  onClick={() => setChartViewMode('weekly')}
+                  className={`px-2 py-0.5 rounded text-[8px] font-black uppercase transition-all ${chartViewMode === 'weekly' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  🌊 Mingguan (Undulasi)
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setChartViewMode('monthly')}
+                  className={`px-2 py-0.5 rounded text-[8px] font-black uppercase transition-all ${chartViewMode === 'monthly' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  📊 Bulanan (Makro)
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-4 text-[8px] font-black uppercase">
               <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block"></span> Volume (%)</span>
               <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-red-500 inline-block"></span> Intensitas (%)</span>

@@ -14,6 +14,8 @@ const ControlPanel = ({
   setStartMonth,
   endMonth,
   setEndMonth,
+  startDate,
+  setStartDate,
   phaseProps,
   setPhaseProps,
   activeMonths,
@@ -32,6 +34,7 @@ const ControlPanel = ({
   trainingFactors,
   setTrainingFactors,
   setMatrixData,
+  applyLoadWavePattern,
   t
 }) => {
 
@@ -112,7 +115,26 @@ const ControlPanel = ({
                 </div>
               </div>
 
-             <div className="grid grid-cols-3 gap-4 border-t pt-4">
+             <div className="grid grid-cols-4 gap-4 border-t pt-4">
+               <div>
+                 <label className="block text-[9px] font-black text-indigo-700 mb-1">📅 TGL MULAI LATIHAN (RIIL)</label>
+                 <input 
+                   type="date" 
+                   value={startDate || ''} 
+                   onChange={e => {
+                     const val = e.target.value;
+                     setStartDate(val);
+                     if (val) {
+                       const d = new Date(val);
+                       if (!isNaN(d.getTime())) {
+                         setStartYear(d.getFullYear());
+                         setStartMonth(d.getMonth());
+                       }
+                     }
+                   }} 
+                   className="w-full border border-indigo-200 p-2 rounded-lg text-[10px] font-black uppercase text-indigo-700 bg-indigo-50/50"
+                 />
+               </div>
                <div><label className="block text-[9px] font-bold text-slate-500 mb-1">TAHUN MULAI</label><input type="number" value={startYear} onChange={e => setStartYear(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase"/></div>
                <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN MULAI</label><select value={startMonth} onChange={e => setStartMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m}</option>)}</select></div>
                <div><label className="block text-[9px] font-bold text-slate-500 mb-1">BULAN SELESAI</label><select value={endMonth} onChange={e => setEndMonth(Number(e.target.value))} className="w-full border p-2 rounded-lg text-[10px] font-black uppercase cursor-pointer">{months.map((m,i)=><option key={m} value={i}>{m} {startMonth > i ? '(Tahun Depan)' : ''}</option>)}</select></div>
@@ -232,7 +254,38 @@ const ControlPanel = ({
 
          {activeStep === 5 && (
            <div className="animate-in fade-in slide-in-from-bottom-2">
-             <h3 className="font-black text-[11px] text-slate-700 uppercase mb-3 border-b pb-2">5. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
+             <div className="flex flex-wrap justify-between items-center mb-3 border-b pb-2 gap-2">
+               <h3 className="font-black text-[11px] text-slate-700 uppercase">5. Pengaturan Volume, Intensitas & Grafik Peaking</h3>
+               {applyLoadWavePattern && (
+                 <div className="flex items-center gap-1.5 flex-wrap">
+                   <span className="text-[8px] font-black uppercase text-slate-500 mr-1">⚡ Pola Undulasi Bompa:</span>
+                   <button 
+                     type="button"
+                     onClick={() => applyLoadWavePattern('3:1')} 
+                     className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-[8px] uppercase shadow-sm transition-all"
+                     title="Pola 3:1: Minggu 1 Sedang (90%), Minggu 2 Progresi (100%), Minggu 3 Beban Puncak (110%), Minggu 4 Deloading (70%)"
+                   >
+                     🌊 Pola 3:1 (Standar)
+                   </button>
+                   <button 
+                     type="button"
+                     onClick={() => applyLoadWavePattern('2:1')} 
+                     className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-black text-[8px] uppercase shadow-sm transition-all"
+                     title="Pola 2:1: Minggu 1 Sedang, Minggu 2 Puncak, Minggu 3 Deloading"
+                   >
+                     ⚡ Pola 2:1 (Intensif)
+                   </button>
+                   <button 
+                     type="button"
+                     onClick={() => applyLoadWavePattern('flat')} 
+                     className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border text-slate-600 rounded-lg font-black text-[8px] uppercase transition-all"
+                     title="Kembalikan ke rata-rata flat bulanan"
+                   >
+                     🔄 Flat
+                   </button>
+                 </div>
+               )}
+             </div>
              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                {activeMonths.map(m => {
                  const computedMinutes = Math.round(((macroValues[m]?.vol || 50) / 100) * (athleteInfo.maxDuration || 300));

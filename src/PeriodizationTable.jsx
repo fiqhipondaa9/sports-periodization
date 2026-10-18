@@ -10,6 +10,7 @@ const PeriodizationTable = ({
   tryInWeeks,
   materials,
   macroValues,
+  microcycleValues,
   trainingFactors,
   matrixData,
   setMatrixData,
@@ -17,6 +18,7 @@ const PeriodizationTable = ({
   setTestSchedule,
   athleteInfo,
   terminology,
+  startDate,
   t
 }) => {
 
@@ -38,6 +40,20 @@ const PeriodizationTable = ({
     if (val >= 60) return 'bg-blue-400 text-white font-black';
     if (val >= 40) return 'bg-sky-300 text-slate-900 font-black';
     return 'bg-sky-100 text-slate-800 font-bold';
+  };
+
+  const getWeekDateLabel = (mIdx, wIdx) => {
+    if (!startDate) return null;
+    const d = new Date(startDate);
+    if (isNaN(d.getTime())) return null;
+    const offsetDays = ((mIdx * 4) + (wIdx - 1)) * 7;
+    const startOfWeek = new Date(d.getTime() + offsetDays * 24 * 60 * 60 * 1000);
+    const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
+    const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const startD = startOfWeek.getDate();
+    const endD = endOfWeek.getDate();
+    const endM = monthNamesShort[endOfWeek.getMonth()];
+    return `${startD}-${endD} ${endM}`;
   };
 
   return (
@@ -65,9 +81,14 @@ const PeriodizationTable = ({
           </tr>
           <tr className="bg-slate-800 text-slate-300 text-[8px] font-black text-center border-b">
             <th className="p-2 border border-slate-700 text-left sticky left-0 bg-slate-800 z-10 uppercase">Siklus / Minggu Mikro</th>
-            {activeMonths.map(m => [1,2,3,4].map(w => (
-              <th key={`th-week-${m}-W${w}`} className="p-2 border border-slate-700 font-bold min-w-[40px]">
-                W{w}
+            {activeMonths.map((m, mIdx) => [1,2,3,4].map(w => (
+              <th key={`th-week-${m}-W${w}`} className="p-2 border border-slate-700 font-bold min-w-[44px]">
+                <div>W{w}</div>
+                {startDate && (
+                  <div className="text-[6.5px] font-normal text-slate-400 whitespace-nowrap mt-0.5">
+                    {getWeekDateLabel(mIdx, w)}
+                  </div>
+                )}
               </th>
             )))}
           </tr>
@@ -109,31 +130,41 @@ const PeriodizationTable = ({
             }))}
           </tr>
 
-          {/* BARIS DINAMIKA BEBAN: VOLUME BULANAN */}
+          {/* BARIS DINAMIKA BEBAN: VOLUME MINGGUAN */}
           <tr className="text-center">
-            <td className="p-2 border border-slate-200 text-left font-black text-blue-700 uppercase sticky left-0 bg-white z-10">📉 VOLUME MAKRO (%)</td>
+            <td className="p-2 border border-slate-200 text-left font-black text-blue-700 uppercase sticky left-0 bg-white z-10">📉 VOLUME (%)</td>
             {activeMonths.map(m => {
-              const val = macroValues[m]?.vol || 0;
-              const bg = getVolumeColor(val);
-              return [1,2,3,4].map(w => (
-                <td key={`td-vol-${m}-W${w}`} className={`p-2 border border-slate-200 ${bg}`}>
-                  {val}%
-                </td>
-              ));
+              const baseVol = macroValues[m]?.vol || 0;
+              return [1,2,3,4].map(w => {
+                const key = `${m}-W${w}`;
+                const val = microcycleValues?.[key]?.vol !== undefined ? microcycleValues[key].vol : baseVol;
+                const isDeload = val < baseVol * 0.85;
+                const bg = getVolumeColor(val);
+                return (
+                  <td key={`td-vol-${key}`} className={`p-2 border border-slate-200 ${bg}`} title={`${key}: Vol ${val}%`}>
+                    <div className="font-black">{val}%</div>
+                    {isDeload && <span className="block text-[6px] font-black text-blue-900 bg-white/60 rounded px-0.5 mt-0.5 uppercase tracking-tighter">DELOAD</span>}
+                  </td>
+                );
+              });
             })}
           </tr>
 
-          {/* BARIS DINAMIKA BEBAN: INTENSITAS BULANAN */}
+          {/* BARIS DINAMIKA BEBAN: INTENSITAS MINGGUAN */}
           <tr className="text-center">
-            <td className="p-2 border border-slate-200 text-left font-black text-red-700 uppercase sticky left-0 bg-white z-10">📈 INTENSITAS MAKRO (%)</td>
+            <td className="p-2 border border-slate-200 text-left font-black text-red-700 uppercase sticky left-0 bg-white z-10">📈 INTENSITAS (%)</td>
             {activeMonths.map(m => {
-              const val = macroValues[m]?.int || 0;
-              const bg = getIntensityColor(val);
-              return [1,2,3,4].map(w => (
-                <td key={`td-int-${m}-W${w}`} className={`p-2 border border-slate-200 ${bg}`}>
-                  {val}%
-                </td>
-              ));
+              const baseInt = macroValues[m]?.int || 0;
+              return [1,2,3,4].map(w => {
+                const key = `${m}-W${w}`;
+                const val = microcycleValues?.[key]?.int !== undefined ? microcycleValues[key].int : baseInt;
+                const bg = getIntensityColor(val);
+                return (
+                  <td key={`td-int-${key}`} className={`p-2 border border-slate-200 ${bg}`} title={`${key}: Int ${val}%`}>
+                    <div className="font-black">{val}%</div>
+                  </td>
+                );
+              });
             })}
           </tr>
 
